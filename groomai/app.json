@@ -1,0 +1,86 @@
+{
+  "expo": {
+    "name": "GroomAI",
+    "slug": "groomai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "groomai",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.groomai.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used for skin analysis, AR hairstyle try-on, and hair loss tracking.",
+        "NSPhotoLibraryUsageDescription": "Used to save AR screenshots and access reference photos.",
+        "NSPhotoLibraryAddUsageDescription": "Used to save your AR hairstyle screenshots.",
+        "NSFaceIDUsageDescription": "Used for biometric authentication.",
+        "NSUserNotificationsUsageDescription": "Used to send routine reminders and streak warnings."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0A0A0A"
+      },
+      "package": "com.groomai.app",
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow GroomAI to access your camera for skin analysis, AR try-on, and barcode scanning."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#C9A84C"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow GroomAI to access your photos for profile and hair loss tracking."
+        }
+      ],
+      "expo-apple-authentication",
+      "@sentry/react-native/expo"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

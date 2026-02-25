@@ -1,0 +1,443 @@
+import { useMemo } from 'react'
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
+import { LinearGradient } from 'expo-linear-gradient'
+import * as Haptics from 'expo-haptics'
+import { Colors } from '@/constants/colors'
+import { Typography } from '@/constants/typography'
+import { Spacing, BorderRadius } from '@/constants/spacing'
+import { LEVEL_TITLES, LEVEL_THRESHOLDS } from '@/constants/badges'
+import { useUserStore } from '@/stores/user.store'
+import { useRoutines, useTodayLogs } from '@/hooks/useRoutine'
+import { useStreak } from '@/hooks/useHabits'
+import { getCompletionRatio } from '@/hooks/useHabits'
+import { ProgressBar } from '@/components/ui/ProgressBar'
+import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
+import { useAffiliateRecommendations } from '@/hooks/useAffiliate'
+import { AffiliateProductCard } from '@/components/ui/AffiliateProductCard'
+
+function getGreeting(): string {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+}
+
+function getLevel(xp: number): number {
+    for (let level = 10; level >= 1; level--) {
+        if (xp >= LEVEL_THRESHOLDS[level]) return level
+    }
+    return 1
+}
+
+const DAILY_TIPS = [
+    'Consistency is key — even a 2-minute routine is better than skipping.',
+    'Apply products in order: lightest to heaviest consistency.',
+    'Your skin repairs itself at night — don\'t skip your evening routine.',
+    'Replace your razor blade every 5-7 shaves to avoid irritation.',
+    'Vitamin C serum in the morning, retinol at night. Never mix them.',
+    'Cold rinse after conditioning locks in moisture for shinier hair.',
+    'Stress shows on your skin. Take 60 seconds to breathe deeply today.',
+]
+
+function ActionCard({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
+    const scale = useSharedValue(1)
+    const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+    return (
+        <Animated.View style={[{ flex: 1 }, animStyle]}>
+            <Pressable
+                style={styles.actionCard}
+                onPress={onPress}
+                onPressIn={() => { scale.value = withSpring(0.93, { damping: 12 }) }}
+                onPressOut={() => { scale.value = withSpring(1, { damping: 10 }) }}
+            >
+                <Ionicons name={icon} size={24} color={Colors.gold.primary} />
+                <Text style={styles.actionLabel}>{label}</Text>
+            </Pressable>
+        </Animated.View>
+    )
+}
+
+export default function HomeScreen() {
+    const profile = useUserStore((s) => s.profile)
+    const { data: routines } = useRoutines()
+    const { data: todayLogs } = useTodayLogs()
+    const { data: streak } = useStreak()
+
+    const firstName = profile?.full_name?.split(' ')[0] ?? 'King'
+    const totalXP = profile?.total_xp ?? 0
+    const level = getLevel(totalXP)
+    const levelTitle = LEVEL_TITLES[level] ?? 'Rookie'
+    const currentStreak = streak?.current_streak ?? profile?.current_streak ?? 0
+
+    // XP progress
+    const currentThreshold = LEVEL_THRESHOLDS[level]
+    const nextThreshold = level < 10 ? LEVEL_THRESHOLDS[level + 1] : LEVEL_THRESHOLDS[10]
+    const xpProgress = level >= 10 ? 1 : (totalXP - currentThreshold) / (nextThreshold - currentThreshold)
+
+    // Routine completion
+    const morningRoutine = useMemo(() => routines?.find((r: any) => r.type === 'morning'), [routines])
+    const nightRoutine = useMemo(() => routines?.find((r: any) => r.type === 'night'), [routines])
+
+    const morningRatio = getCompletionRatio(morningRoutine?.routine_steps ?? [], todayLogs ?? [])
+    const nightRatio = getCompletionRatio(nightRoutine?.routine_steps ?? [], todayLogs ?? [])
+
+    // Daily tip
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+    const dailyTip = DAILY_TIPS[dayOfYear % DAILY_TIPS.length]
+
+    const { data: affiliateRecs } = useAffiliateRecommendations()
+    const topRecs = affiliateRecs?.slice(0, 3) ?? []
+
+    const actionScale = useSharedValue(1)
+    const actionAnimated = useAnimatedStyle(() => ({ transform: [{ scale: actionScale.value }] }))
+
+    return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <AnimatedScreen>
+                <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                    {/* Gradient Hero Header */}
+                    <LinearGradient
+                        colors={['rgba(201,168,76,0.12)', 'transparent']}
+                        style={styles.heroGradient}
+                    >
+                        <Animated.View entering={FadeInDown.duration(400)}>
+                            <Text style={styles.greeting}>{getGreeting()},</Text>
+                            <Text style={styles.name}>{firstName}.</Text>
+                        </Animated.View>
+                    </LinearGradient>
+
+                    {/* Streak + Level Row */}
+                    <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.statsRow}>
+                        {/* Streak */}
+                        <Pressable style={styles.statCard} onPress={() => router.push('/(tabs)/tracker')}>
+                            <Text style={styles.statEmoji}>🔥</Text>
+                            <Text style={styles.statValue}>{currentStreak}</Text>
+                            <Text style={styles.statLabel}>Day Streak</Text>
+                        </Pressable>
+
+                        {/* Level */}
+                        <Pressable style={styles.statCard} onPress={() => router.push('/(tabs)/tracker')}>
+                            <Text style={styles.statEmoji}>⭐</Text>
+                            <Text style={styles.statValue}>Lv. {level}</Text>
+                            <Text style={styles.statLabel}>{levelTitle}</Text>
+                        </Pressable>
+
+                        {/* XP */}
+                        <View style={styles.statCard}>
+                            <Text style={styles.statEmoji}>⚡</Text>
+                            <Text style={styles.statValue}>{totalXP.toLocaleString()}</Text>
+                            <Text style={styles.statLabel}>Total XP</Text>
+                        </View>
+                    </Animated.View>
+
+                    {/* XP Progress Bar */}
+                    <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.xpBarSection}>
+                        <ProgressBar
+                            progress={Math.min(xpProgress, 1)}
+                            height={6}
+                            color={Colors.gold.primary}
+                            animated
+                        />
+                        {level < 10 && (
+                            <Text style={styles.xpBarLabel}>
+                                {nextThreshold - totalXP} XP to Level {level + 1}
+                            </Text>
+                        )}
+                    </Animated.View>
+
+                    {/* Today's Routines */}
+                    <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+                        <Text style={styles.sectionTitle}>Today's Routines</Text>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.routineRow}>
+                        {/* Morning */}
+                        <Pressable
+                            style={styles.routineMini}
+                            onPress={() => morningRoutine && router.push({
+                                pathname: '/routine-editor',
+                                params: { routineId: morningRoutine.id, routineName: morningRoutine.name },
+                            })}
+                        >
+                            <View style={styles.routineMiniHeader}>
+                                <Ionicons name="sunny" size={18} color={Colors.gold.primary} />
+                                <Text style={styles.routineMiniTitle}>Morning</Text>
+                            </View>
+                            <Text style={styles.routineMiniCount}>
+                                {morningRatio.completed}/{morningRatio.total}
+                            </Text>
+                            <View style={styles.miniTrack}>
+                                <View
+                                    style={[
+                                        styles.miniFill,
+                                        {
+                                            width: `${morningRatio.total > 0 ? (morningRatio.completed / morningRatio.total) * 100 : 0}%`,
+                                            backgroundColor: morningRatio.completed === morningRatio.total && morningRatio.total > 0
+                                                ? Colors.success
+                                                : Colors.gold.primary,
+                                        },
+                                    ]}
+                                />
+                            </View>
+                            {morningRatio.completed === morningRatio.total && morningRatio.total > 0 && (
+                                <Text style={styles.routineComplete}>✓ Done</Text>
+                            )}
+                        </Pressable>
+
+                        {/* Night */}
+                        <Pressable
+                            style={styles.routineMini}
+                            onPress={() => nightRoutine && router.push({
+                                pathname: '/routine-editor',
+                                params: { routineId: nightRoutine.id, routineName: nightRoutine.name },
+                            })}
+                        >
+                            <View style={styles.routineMiniHeader}>
+                                <Ionicons name="moon" size={18} color={Colors.gold.primary} />
+                                <Text style={styles.routineMiniTitle}>Night</Text>
+                            </View>
+                            <Text style={styles.routineMiniCount}>
+                                {nightRatio.completed}/{nightRatio.total}
+                            </Text>
+                            <View style={styles.miniTrack}>
+                                <View
+                                    style={[
+                                        styles.miniFill,
+                                        {
+                                            width: `${nightRatio.total > 0 ? (nightRatio.completed / nightRatio.total) * 100 : 0}%`,
+                                            backgroundColor: nightRatio.completed === nightRatio.total && nightRatio.total > 0
+                                                ? Colors.success
+                                                : Colors.gold.primary,
+                                        },
+                                    ]}
+                                />
+                            </View>
+                            {nightRatio.completed === nightRatio.total && nightRatio.total > 0 && (
+                                <Text style={styles.routineComplete}>✓ Done</Text>
+                            )}
+                        </Pressable>
+                    </Animated.View>
+
+                    {/* Daily Tip */}
+                    <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.tipCard}>
+                        <View style={styles.tipHeader}>
+                            <Ionicons name="bulb-outline" size={18} color={Colors.gold.primary} />
+                            <Text style={styles.tipTitle}>Daily Tip</Text>
+                        </View>
+                        <Text style={styles.tipText}>{dailyTip}</Text>
+                    </Animated.View>
+
+                    {/* Products For You */}
+                    {topRecs.length > 0 && (
+                        <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.affiliateSection}>
+                            <Text style={styles.sectionTitle}>Products For You</Text>
+                            <Text style={styles.sectionSubtitle}>Matched to your skin type</Text>
+                            <View style={styles.affiliateList}>
+                                {topRecs.map((product) => (
+                                    <AffiliateProductCard
+                                        key={product.id}
+                                        product={product}
+                                        source="home"
+                                    />
+                                ))}
+                            </View>
+                        </Animated.View>
+                    )}
+
+                    {/* Quick Actions */}
+                    <Animated.View entering={FadeInDown.delay(450).duration(400)}>
+                        <Text style={styles.sectionTitle}>Quick Actions</Text>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.actionsRow}>
+                        <ActionCard icon="list" label="Routines" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/routines') }} />
+                        <ActionCard icon="trophy" label="Badges" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/tracker') }} />
+                        <ActionCard icon="cut" label="Barber" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/barber') }} />
+                    </Animated.View>
+                </ScrollView>
+            </AnimatedScreen>
+        </SafeAreaView>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Colors.bg.primary,
+    },
+    scroll: {
+        padding: Spacing.lg,
+        paddingBottom: 120,
+    },
+    affiliateSection: {
+        marginBottom: Spacing.md,
+    },
+    sectionSubtitle: {
+        ...Typography.small,
+        color: Colors.text.tertiary,
+        marginTop: -Spacing.xs,
+        marginBottom: Spacing.sm,
+    },
+    affiliateList: {
+        gap: Spacing.sm,
+    },
+    heroGradient: {
+        marginHorizontal: -Spacing.lg,
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: Spacing.md,
+        paddingTop: Spacing.xs,
+        marginBottom: Spacing.sm,
+    },
+    greeting: {
+        ...Typography.h2,
+        color: Colors.text.secondary,
+    },
+    name: {
+        ...Typography.display,
+        color: Colors.text.primary,
+        marginBottom: Spacing.lg,
+    },
+
+    // Stats Row
+    statsRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginBottom: Spacing.sm,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+    },
+    statEmoji: {
+        fontSize: 24,
+        marginBottom: 4,
+    },
+    statValue: {
+        ...Typography.h3,
+        color: Colors.text.primary,
+    },
+    statLabel: {
+        ...Typography.caption,
+        color: Colors.text.secondary,
+        marginTop: 2,
+    },
+
+    // XP Bar
+    xpBarSection: {
+        marginBottom: Spacing.lg,
+    },
+    xpBarLabel: {
+        ...Typography.caption,
+        color: Colors.text.tertiary,
+        textAlign: 'right',
+        marginTop: 4,
+    },
+
+    // Section
+    sectionTitle: {
+        ...Typography.h3,
+        color: Colors.text.primary,
+        marginBottom: Spacing.sm,
+    },
+
+    // Routine Mini Cards
+    routineRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginBottom: Spacing.lg,
+    },
+    routineMini: {
+        flex: 1,
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+    },
+    routineMiniHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: Spacing.xs,
+    },
+    routineMiniTitle: {
+        ...Typography.bodyMedium,
+        color: Colors.text.primary,
+    },
+    routineMiniCount: {
+        ...Typography.caption,
+        color: Colors.text.secondary,
+        marginBottom: Spacing.xs,
+    },
+    miniTrack: {
+        height: 4,
+        backgroundColor: Colors.bg.tertiary,
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    miniFill: {
+        height: '100%',
+        borderRadius: 2,
+    },
+    routineComplete: {
+        ...Typography.caption,
+        color: Colors.success,
+        marginTop: Spacing.xs,
+        fontWeight: '600',
+    },
+
+    // Tip Card
+    tipCard: {
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        borderWidth: 1,
+        borderColor: Colors.overlay.gold,
+        marginBottom: Spacing.lg,
+    },
+    tipHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginBottom: Spacing.sm,
+    },
+    tipTitle: {
+        ...Typography.h3,
+        color: Colors.gold.primary,
+    },
+    tipText: {
+        ...Typography.body,
+        color: Colors.text.secondary,
+        lineHeight: 22,
+    },
+
+    // Quick Actions
+    actionsRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+    },
+    actionCard: {
+        flex: 1,
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+        gap: Spacing.xs,
+    },
+    actionLabel: {
+        ...Typography.caption,
+        color: Colors.text.secondary,
+        fontWeight: '600',
+    },
+})
