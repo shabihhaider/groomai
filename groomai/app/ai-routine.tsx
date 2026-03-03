@@ -124,6 +124,8 @@ export default function AIRoutineScreen() {
             onError: (err: any) => {
                 if (err?.code === 'rate_limit_exceeded') {
                     Alert.alert('Limit Reached', err.message)
+                } else if (err?.code === 'ai_unavailable') {
+                    Alert.alert('AI Temporarily Unavailable', 'Please try again in a few minutes.')
                 } else {
                     Alert.alert('Generation Failed', 'Please check your connection and try again.')
                 }

@@ -32,6 +32,7 @@ import {
 } from '@/services/hairloss.service'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
+import { useSubscriptionStore } from '@/stores/subscription.store'
 
 // ── Angle definitions ──────────────────────────────────────────────────────
 
@@ -245,9 +246,13 @@ function TimelineView({ logs }: { logs: HairLossLog[] }) {
             </ScrollView>
 
             <Text style={styles.trendText}>
-                {months.length >= 3
-                    ? '📊 Your photos from the last 3 months look consistent — keep tracking monthly for accurate trends.'
-                    : `📅 Log ${3 - months.length} more session${3 - months.length === 1 ? '' : 's'} to unlock trend analysis.`}
+                {months.length >= 6
+                    ? '📊 6+ months tracked! Look closely at your earliest vs latest photos — consistent tracking gives you the clearest picture of change over time.'
+                    : months.length >= 3
+                    ? '📈 Great progress! With 3+ months of data, start comparing your first session to today. Look at hairline edges and crown density.'
+                    : months.length === 2
+                    ? '📅 2 sessions logged! One more month and you can start spotting real trends. Consistency is everything.'
+                    : '📸 First session saved! Come back next month for your second log. Early detection starts with regular tracking.'}
             </Text>
         </ScrollView>
     )
@@ -258,6 +263,7 @@ function TimelineView({ logs }: { logs: HairLossLog[] }) {
 type ScreenState = 'home' | 'camera' | 'review' | 'timeline'
 
 export default function HairLossTrackerScreen() {
+    const isPremium = useSubscriptionStore((s) => s.isPremium)
     const [permission, requestPermission] = useCameraPermissions()
     const [screen, setScreen] = useState<ScreenState>('home')
     const [currentAngleIndex, setCurrentAngleIndex] = useState(0)
@@ -292,6 +298,38 @@ export default function HairLossTrackerScreen() {
     useEffect(() => {
         scheduleMonthlyReminder()
     }, [])
+
+    if (!isPremium) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <AnimatedScreen>
+                    <View style={styles.headerBar}>
+                        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+                            <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
+                        </Pressable>
+                        <View style={styles.proPill}>
+                            <Ionicons name="diamond" size={12} color={Colors.gold.primary} />
+                            <Text style={styles.proPillText}>PRO</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.premiumGate}>
+                        <Ionicons name="lock-closed" size={48} color={Colors.gold.primary} />
+                        <Text style={styles.premiumTitle}>Premium Feature</Text>
+                        <Text style={styles.premiumSubtitle}>
+                            Hair Loss Tracker is available on Premium.
+                        </Text>
+                        <Pressable
+                            style={styles.upgradeBtn}
+                            onPress={() => router.push('/paywall')}
+                        >
+                            <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
+                        </Pressable>
+                    </View>
+                </AnimatedScreen>
+            </SafeAreaView>
+        )
+    }
 
     async function captureCurrentAngle() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -526,10 +564,28 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.bg.secondary, justifyContent: 'center', alignItems: 'center',
         borderWidth: 1, borderColor: Colors.bg.tertiary,
     },
+    proPill: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        backgroundColor: Colors.overlay.gold, paddingHorizontal: 10, paddingVertical: 4,
+        borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Colors.gold.muted,
+    },
+    proPillText: { ...Typography.caption, color: Colors.gold.primary, fontWeight: '700' },
     backBtnDark: {
         width: 40, height: 40, borderRadius: 20,
         backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center',
     },
+
+    premiumGate: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md },
+    premiumTitle: { ...Typography.h2, color: Colors.text.primary, textAlign: 'center' },
+    premiumSubtitle: { ...Typography.body, color: Colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+    upgradeBtn: {
+        backgroundColor: Colors.gold.primary,
+        borderRadius: BorderRadius.md,
+        paddingVertical: 14,
+        paddingHorizontal: Spacing.xl,
+        marginTop: Spacing.sm,
+    },
+    upgradeBtnText: { ...Typography.bodyMedium, color: Colors.bg.primary, fontWeight: '800' },
 
     hero: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
     heroLine: { ...Typography.h2, color: Colors.text.primary },

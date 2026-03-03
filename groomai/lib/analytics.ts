@@ -3,8 +3,21 @@
 // PostHog: product analytics / funnel tracking
 // Sentry: error monitoring
 // All calls are no-ops when keys are missing (dev safety)
+// Sentry native module is loaded conditionally to support Expo Go.
 
-import * as Sentry from '@sentry/react-native'
+import Constants from 'expo-constants'
+
+const isExpoGo = Constants.appOwnership === 'expo'
+
+// Dynamically load Sentry only in dev-client / standalone builds
+let Sentry: typeof import('@sentry/react-native') | null = null
+if (!isExpoGo) {
+    try {
+        Sentry = require('@sentry/react-native')
+    } catch {
+        // native module unavailable — all Sentry calls become no-ops
+    }
+}
 
 // ── PostHog ────────────────────────────────────────────────────────────────
 // We call the PostHog REST capture API directly to avoid requiring
@@ -36,6 +49,7 @@ function captureEvent(event: string, properties: Record<string, unknown> = {}) {
 // ── Sentry ─────────────────────────────────────────────────────────────────
 
 export function initSentry() {
+    if (!Sentry) return
     const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN
     if (!dsn) return
     Sentry.init({
@@ -46,6 +60,7 @@ export function initSentry() {
 }
 
 export function setSentryUser(userId: string | null) {
+    if (!Sentry) return
     if (userId) {
         Sentry.setUser({ id: userId })
         _distinctId = userId
@@ -56,9 +71,10 @@ export function setSentryUser(userId: string | null) {
 }
 
 export function captureException(error: unknown, context?: Record<string, unknown>) {
+    if (!Sentry) { console.error('[analytics] captureException (Sentry unavailable):', error); return }
     if (context) Sentry.withScope((scope) => {
         scope.setExtras(context as any)
-        Sentry.captureException(error)
+        Sentry!.captureException(error)
     })
     else Sentry.captureException(error)
 }

@@ -190,7 +190,7 @@ export default function SkinAnalysisScreen() {
 
     async function takePhoto() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-        const shot = await cameraRef.current?.takePictureAsync({ quality: 0.7, base64: true, exif: false })
+        const shot = await cameraRef.current?.takePictureAsync({ quality: 0.85, base64: true, exif: false, skipProcessing: false })
         if (shot?.base64) setPhoto(shot.base64)
     }
 
@@ -199,11 +199,18 @@ export default function SkinAnalysisScreen() {
         analyze.mutate(photo, {
             onSuccess: (data) => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                if (data?.error === 'low_quality') {
+                    Alert.alert('Retake Photo', data.summary || 'Image quality was too low. Please take another photo in better lighting.')
+                    setPhoto(null)
+                    return
+                }
                 setResult(data)
             },
             onError: (err: any) => {
                 if (err?.code === 'rate_limit_exceeded') {
                     Alert.alert('Daily Limit Reached', err.message)
+                } else if (err?.code === 'ai_unavailable') {
+                    Alert.alert('AI Temporarily Unavailable', 'Please try again in a few minutes.')
                 } else {
                     Alert.alert('Analysis Failed', 'Please take another photo in better lighting.')
                 }

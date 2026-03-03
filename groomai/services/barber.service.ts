@@ -2,7 +2,9 @@
 // Barber Translator feature — hairstyle CRUD + saved hairstyles
 
 import { supabase } from '@/lib/supabase'
+import { invokeEdgeFunction } from '@/lib/edgeFunctions'
 import { HAIRSTYLES, filterHairstyles, type Hairstyle, type FaceShape } from '@/constants/hairstyles'
+import { useUserStore } from '@/stores/user.store'
 
 export interface HairstyleFilters {
     query?: string
@@ -72,8 +74,10 @@ export const barberService = {
     incrementViewCount(slug: string): void {
         supabase
             .rpc('increment_hairstyle_view', { hairstyle_slug: slug })
-            .then(() => { })
-            .catch(() => { })
+            .then(
+                () => { },
+                (error) => console.error('Failed to increment view count', error)
+            )
     },
 
     // ── Celebrity AI Breakdown ──────────────────────────────────────────────
@@ -86,10 +90,14 @@ export const barberService = {
         styling_product: string
         maintenance: string
     }> {
-        const { data, error } = await supabase.functions.invoke('analyze-hairstyle', {
-            body: { imageBase64 },
+        const store = useUserStore.getState()
+        const userId = store.session?.user?.id
+        const subscriptionStatus = store.profile?.subscription_status ?? 'free'
+
+        return await invokeEdgeFunction('analyze-hairstyle', {
+            imageBase64,
+            userId,
+            subscriptionStatus,
         })
-        if (error) throw error
-        return data
     },
 }

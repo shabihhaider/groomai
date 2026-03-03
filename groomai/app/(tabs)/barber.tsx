@@ -25,6 +25,7 @@ import { useUserStore } from '@/stores/user.store'
 import { useSubscriptionStore } from '@/stores/subscription.store'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
 import { HAIRSTYLES, filterHairstyles, type Hairstyle } from '@/constants/hairstyles'
+import { getHairstyleImage } from '@/constants/hairstyleImages'
 import { useSavedHairstyleIds } from '@/hooks/useBarber'
 
 const CATEGORIES = [
@@ -53,13 +54,20 @@ function StyleCard({ item, isSaved, isPremiumUser }: { item: Hairstyle; isSaved:
         <Pressable style={styles.styleCard} onPress={handlePress}>
             {/* Thumbnail */}
             <View style={styles.thumbnailWrapper}>
-                {item.thumbnailUrl ? (
-                    <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
-                ) : (
-                    <View style={styles.thumbnailPlaceholder}>
-                        <Ionicons name="cut" size={28} color={Colors.gold.primary} />
-                    </View>
-                )}
+                {(() => {
+                    const localImg = getHairstyleImage(item.slug)
+                    if (localImg?.front) {
+                        return <Image source={localImg.front} style={styles.thumbnail} resizeMode="cover" />
+                    } else if (item.thumbnailUrl) {
+                        return <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+                    } else {
+                        return (
+                            <View style={styles.thumbnailPlaceholder}>
+                                <Ionicons name="cut" size={28} color={Colors.gold.primary} />
+                            </View>
+                        )
+                    }
+                })()}
                 {locked && (
                     <View style={styles.lockOverlay}>
                         <Ionicons name="lock-closed" size={18} color="#fff" />
@@ -117,11 +125,8 @@ export default function BarberScreen() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <AnimatedScreen>
-                <ScrollView
-                    contentContainerStyle={styles.scroll}
-                    showsVerticalScrollIndicator={false}
-                    stickyHeaderIndices={[1]}
-                >
+                {/* Fixed Hero & Filter Bar (Outside ScrollView to fix Android touch) */}
+                <View style={{ zIndex: 20, elevation: 20 }}>
                     {/* Hero Header */}
                     <LinearGradient
                         colors={['rgba(201,168,76,0.10)', 'transparent']}
@@ -133,7 +138,7 @@ export default function BarberScreen() {
                         </Animated.View>
                     </LinearGradient>
 
-                    {/* Sticky Search + Filter Bar */}
+                    {/* Search + Filter Bar */}
                     <View style={styles.stickyBar}>
                         {/* Search */}
                         <View style={styles.searchRow}>
@@ -177,6 +182,13 @@ export default function BarberScreen() {
                             ))}
                         </ScrollView>
                     </View>
+                </View>
+
+                {/* Main Scroll Content */}
+                <ScrollView
+                    contentContainerStyle={styles.scroll}
+                    showsVerticalScrollIndicator={false}
+                >
 
                     {/* For Your Face Shape — personalized section */}
                     {faceShape && forYouStyles.length > 0 && activeCategory === 'all' && !query && (
@@ -205,11 +217,16 @@ export default function BarberScreen() {
                                             }}
                                         >
                                             <View style={styles.forYouThumb}>
-                                                {item.thumbnailUrl ? (
-                                                    <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                                                ) : (
-                                                    <Ionicons name="cut" size={22} color={Colors.gold.primary} />
-                                                )}
+                                                {(() => {
+                                                    const localImg = getHairstyleImage(item.slug)
+                                                    if (localImg?.front) {
+                                                        return <Image source={localImg.front} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                                    } else if (item.thumbnailUrl) {
+                                                        return <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                                    } else {
+                                                        return <Ionicons name="cut" size={22} color={Colors.gold.primary} />
+                                                    }
+                                                })()}
                                             </View>
                                             <Text style={styles.forYouName} numberOfLines={2}>{item.name}</Text>
                                             {item.isTrending && <Text style={styles.forYouTrending}>🔥 Trending</Text>}
@@ -315,6 +332,8 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xs,
         borderBottomWidth: 1,
         borderBottomColor: Colors.bg.tertiary,
+        zIndex: 10,
+        elevation: 10,
     },
     searchRow: {
         flexDirection: 'row',

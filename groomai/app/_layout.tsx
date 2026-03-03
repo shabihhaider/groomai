@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import Purchases from 'react-native-purchases'
+import * as SplashScreen from 'expo-splash-screen'
 import { queryClient } from '@/lib/queryClient'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { TrialWarningBanner } from '@/components/paywall/TrialWarningBanner'
@@ -11,21 +11,34 @@ import { Colors } from '@/constants/colors'
 import { useUserStore } from '@/stores/user.store'
 import { useSubscriptionStore } from '@/stores/subscription.store'
 import { supabase } from '@/lib/supabase'
-import { initRevenueCat } from '@/lib/revenuecat'
+import { initRevenueCat, logOutPurchases } from '@/lib/revenuecat'
 import { requestNotificationPermissions, loadAndScheduleNotifications } from '@/utils/notifications'
 import Constants from 'expo-constants'
 import { router as expoRouter } from 'expo-router'
 import { initSentry, analytics } from '@/lib/analytics'
 
 // Initialize Sentry as early as possible (before component mount)
-initSentry()
+try { initSentry() } catch (e) { console.warn('Sentry init skipped:', e) }
+
+console.log('🟢 _layout.tsx loaded successfully')
+
+// Keep splash screen visible while auth resolves
+SplashScreen.preventAutoHideAsync().catch(() => {})
 
 export default function RootLayout() {
     const setSession = useUserStore((s) => s.setSession)
     const setProfile = useUserStore((s) => s.setProfile)
     const setLoading = useUserStore((s) => s.setLoading)
+    const isLoading = useUserStore((s) => s.isLoading)
     const checkSubscriptionStatus = useSubscriptionStore((s) => s.checkStatus)
     const resetSubscription = useSubscriptionStore((s) => s.reset)
+
+    // Hide splash screen once auth/profile resolution is done
+    useEffect(() => {
+        if (!isLoading) {
+            SplashScreen.hideAsync().catch(() => {})
+        }
+    }, [isLoading])
 
     useEffect(() => {
         // Get initial session
@@ -59,7 +72,7 @@ export default function RootLayout() {
                     setProfile(null)
                     analytics.signOut()
                     // Sign out of RevenueCat
-                    try { await Purchases.logOut() } catch { /* not initialized */ }
+                    try { await logOutPurchases() } catch { /* not initialized */ }
                     resetSubscription()
                 }
             }
@@ -100,11 +113,13 @@ export default function RootLayout() {
 
             if (error) {
                 console.error('Error fetching profile:', error)
+                setLoading(false) // Ensure loading clears even on error
             } else {
-                setProfile(data)
+                setProfile(data) // setProfile also sets isLoading=false
             }
         } catch (err) {
             console.error('Exception fetching profile:', err)
+            setLoading(false) // Ensure loading clears even on exception
         }
     }
 
@@ -151,6 +166,14 @@ export default function RootLayout() {
                         <Stack.Screen name="skin-analysis" />
                         <Stack.Screen name="product-scanner" />
                         <Stack.Screen name="celebrity-breakdown" />
+                        <Stack.Screen
+                            name="hairstyle-detail"
+                            options={{ animation: 'slide_from_right' }}
+                        />
+                        <Stack.Screen
+                            name="ar-tryon"
+                            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                        />
                     </Stack>
                 </QueryClientProvider>
             </ErrorBoundary>

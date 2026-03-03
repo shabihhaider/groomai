@@ -56,14 +56,25 @@ export default function SignInScreen() {
         setLoading(true)
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password,
             })
             if (error) throw error
-            // Auth state change listener in root layout handles navigation
+
+            if (data.session) {
+                // Successfully signed in — navigate to main app
+                // The onAuthStateChange listener will also fire and fetch profile
+                router.replace('/')
+            }
         } catch (err: any) {
-            Alert.alert('Sign In Error', err.message)
+            if (err.message?.includes('Email not confirmed')) {
+                Alert.alert('Email Not Confirmed', 'Please check your inbox and click the confirmation link first.')
+            } else if (err.message?.includes('Invalid login credentials')) {
+                Alert.alert('Invalid Credentials', 'The email or password is incorrect. Please try again.')
+            } else {
+                Alert.alert('Sign In Error', err.message)
+            }
         } finally {
             setLoading(false)
         }

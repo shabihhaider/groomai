@@ -24,6 +24,7 @@ import { Spacing, BorderRadius } from '@/constants/spacing'
 import { useAnalyzeHairstyle } from '@/hooks/useBarber'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
 import { BarberCardModal } from '@/components/barber/BarberCardModal'
+import { useSubscriptionStore } from '@/stores/subscription.store'
 
 interface AnalysisResult {
     style_name: string
@@ -35,9 +36,39 @@ interface AnalysisResult {
 }
 
 export default function CelebrityBreakdownScreen() {
+    const isPremium = useSubscriptionStore((s) => s.isPremium)
     const analyze = useAnalyzeHairstyle()
     const [result, setResult] = useState<AnalysisResult | null>(null)
     const [showCard, setShowCard] = useState(false)
+    const [analysisError, setAnalysisError] = useState<string | null>(null)
+
+    if (!isPremium) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <AnimatedScreen>
+                    <View style={styles.headerBar}>
+                        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+                            <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
+                        </Pressable>
+                        <View style={styles.proPill}>
+                            <Ionicons name="diamond" size={12} color={Colors.gold.primary} />
+                            <Text style={styles.proPillText}>PRO</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.premiumGate}>
+                        <Text style={styles.premiumTitle}>Premium Feature</Text>
+                        <Text style={styles.premiumSubtitle}>
+                            Celebrity Breakdown is available on Premium.
+                        </Text>
+                        <Pressable style={styles.upgradeBtn} onPress={() => router.push('/paywall')}>
+                            <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
+                        </Pressable>
+                    </View>
+                </AnimatedScreen>
+            </SafeAreaView>
+        )
+    }
 
     async function pickImage() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -62,17 +93,23 @@ export default function CelebrityBreakdownScreen() {
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setResult(null)
+        setAnalysisError(null)
 
         analyze.mutate(asset.base64, {
             onSuccess: (data) => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
                 setResult(data)
+                setAnalysisError(null)
             },
-            onError: (error) => {
-                Alert.alert(
-                    'Analysis failed',
-                    'Could not analyze this photo. Make sure it clearly shows a hairstyle and try again.'
-                )
+            onError: (err: any) => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+                if (err?.code === 'rate_limit_exceeded') {
+                    setAnalysisError(err.message)
+                } else if (err?.code === 'ai_unavailable') {
+                    setAnalysisError('AI is temporarily unavailable right now. Please try again in a few minutes.')
+                } else {
+                    setAnalysisError('Could not analyze this photo. Make sure it clearly shows a hairstyle from the front or 45° angle.')
+                }
             },
         })
     }
@@ -93,13 +130,22 @@ export default function CelebrityBreakdownScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setResult(null)
 
+        setAnalysisError(null)
         analyze.mutate(picked.assets[0].base64, {
             onSuccess: (data) => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
                 setResult(data)
+                setAnalysisError(null)
             },
-            onError: () => {
-                Alert.alert('Analysis failed', 'Could not analyze this photo. Try another shot with better lighting.')
+            onError: (err: any) => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+                if (err?.code === 'rate_limit_exceeded') {
+                    setAnalysisError(err.message)
+                } else if (err?.code === 'ai_unavailable') {
+                    setAnalysisError('AI is temporarily unavailable right now. Please try again in a few minutes.')
+                } else {
+                    setAnalysisError('Could not analyze this photo. Try another shot with better lighting and a clear view of the hairstyle.')
+                }
             },
         })
     }
@@ -174,6 +220,34 @@ export default function CelebrityBreakdownScreen() {
                                 <ActivityIndicator size="large" color={Colors.gold.primary} />
                                 <Text style={styles.loadingTitle}>Analyzing hairstyle...</Text>
                                 <Text style={styles.loadingSubtitle}>GPT-4o is reading the cut, reading the guard numbers, and writing your barber script.</Text>
+                            </Animated.View>
+                        )}
+
+                        {/* Analysis Error — branded in-app error state */}
+                        {analysisError && !analyze.isPending && (
+                            <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
+                                <Ionicons name="alert-circle" size={36} color={Colors.error} />
+                                <Text style={styles.errorTitle}>Analysis Failed</Text>
+                                <Text style={styles.errorMessage}>{analysisError}</Text>
+                                <View style={styles.errorActions}>
+                                    <Pressable style={styles.retryBtn} onPress={() => { setAnalysisError(null); pickImage() }}>
+                                        <Ionicons name="images" size={16} color={Colors.bg.primary} />
+                                        <Text style={styles.retryBtnText}>Try Another Photo</Text>
+                                    </Pressable>
+                                    <Pressable style={styles.retryCameraBtn} onPress={() => { setAnalysisError(null); takePhoto() }}>
+                                        <Ionicons name="camera" size={16} color={Colors.gold.primary} />
+                                        <Text style={styles.retryCameraBtnText}>Take Photo</Text>
+                                    </Pressable>
+                                </View>
+                                <View style={styles.errorTips}>
+                                    <Text style={styles.errorTipsTitle}>For best results:</Text>
+                                    {['Clear, well-lit front or 45° angle photo', 'Avoid hats, hoods, or blurry images', 'Celebrity, influencer, or magazine photos work best'].map((tip, i) => (
+                                        <View key={i} style={styles.errorTipRow}>
+                                            <Ionicons name="checkmark" size={12} color={Colors.gold.primary} />
+                                            <Text style={styles.errorTipText}>{tip}</Text>
+                                        </View>
+                                    ))}
+                                </View>
                             </Animated.View>
                         )}
 
@@ -368,4 +442,45 @@ const styles = StyleSheet.create({
     tipsTitle: { ...Typography.h3, color: Colors.text.primary, marginBottom: Spacing.xs },
     tip: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.xs },
     tipText: { ...Typography.body, color: Colors.text.secondary, flex: 1, lineHeight: 20 },
+    // Error card styles
+    errorCard: {
+        marginHorizontal: Spacing.lg,
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.xl,
+        alignItems: 'center',
+        gap: Spacing.sm,
+        borderWidth: 1,
+        borderColor: Colors.error + '40',
+    },
+    errorTitle: { ...Typography.h3, color: Colors.text.primary, fontWeight: '700' },
+    errorMessage: { ...Typography.body, color: Colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+    errorActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm, width: '100%' },
+    retryBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 6, backgroundColor: Colors.gold.primary, borderRadius: BorderRadius.md, paddingVertical: 12,
+    },
+    retryBtnText: { ...Typography.bodyMedium, color: Colors.bg.primary, fontWeight: '700' },
+    retryCameraBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 6, borderRadius: BorderRadius.md, paddingVertical: 12,
+        borderWidth: 1, borderColor: Colors.gold.muted, backgroundColor: Colors.overlay.gold,
+    },
+    retryCameraBtnText: { ...Typography.bodyMedium, color: Colors.gold.primary, fontWeight: '700' },
+    errorTips: { width: '100%', marginTop: Spacing.sm, gap: 6 },
+    errorTipsTitle: { ...Typography.small, color: Colors.text.secondary, fontWeight: '600', marginBottom: 2 },
+    errorTipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    errorTipText: { ...Typography.caption, color: Colors.text.tertiary },
+
+    premiumGate: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md },
+    premiumTitle: { ...Typography.h2, color: Colors.text.primary, textAlign: 'center' },
+    premiumSubtitle: { ...Typography.body, color: Colors.text.secondary, textAlign: 'center', lineHeight: 22 },
+    upgradeBtn: {
+        backgroundColor: Colors.gold.primary,
+        borderRadius: BorderRadius.md,
+        paddingVertical: 14,
+        paddingHorizontal: Spacing.xl,
+        marginTop: Spacing.sm,
+    },
+    upgradeBtnText: { ...Typography.bodyMedium, color: Colors.bg.primary, fontWeight: '800' },
 })

@@ -65,7 +65,7 @@ export default function SignUpScreen() {
         setLoading(true)
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
         try {
-            const { error } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email: email.trim(),
                 password,
                 options: {
@@ -73,9 +73,32 @@ export default function SignUpScreen() {
                 },
             })
             if (error) throw error
-            // Auth state change listener in root layout handles navigation
+
+            // If email confirmation is required, Supabase returns a user but no session
+            if (data.user && !data.session) {
+                Alert.alert(
+                    'Check Your Email',
+                    `We sent a confirmation link to ${email.trim()}. Please verify your email, then sign in.`,
+                    [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }]
+                )
+                return
+            }
+
+            // Auto-confirm is on — session exists, navigate to onboarding
+            if (data.session) {
+                Alert.alert('Account Created!', 'Welcome to GroomAI!', [
+                    { text: 'Let\'s Go', onPress: () => router.replace('/') }
+                ])
+            }
         } catch (err: any) {
-            Alert.alert('Sign Up Error', err.message)
+            if (err.message?.includes('already registered')) {
+                Alert.alert('Account Exists', 'This email is already registered. Try signing in instead.', [
+                    { text: 'Sign In', onPress: () => router.replace('/(auth)/sign-in') },
+                    { text: 'Cancel', style: 'cancel' },
+                ])
+            } else {
+                Alert.alert('Sign Up Error', err.message)
+            }
         } finally {
             setLoading(false)
         }

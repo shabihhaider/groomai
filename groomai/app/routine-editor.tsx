@@ -20,12 +20,14 @@ import { scheduleStreakWarning } from '@/utils/notifications'
 import { StepTimer } from '@/components/routine/StepTimer'
 import { XPToast } from '@/components/tracker/XPToast'
 
+
 const CATEGORY_ICONS: Record<string, string> = {
     face: 'water-outline',
     hair: 'cut-outline',
     beard: 'man-outline',
     body: 'body-outline',
 }
+
 
 export default function RoutineEditorScreen() {
     const { routineId, routineName } = useLocalSearchParams<{ routineId: string; routineName: string }>()
@@ -242,9 +244,13 @@ export default function RoutineEditorScreen() {
                                     )}
                                 </View>
                             </Pressable>
+
+
                         </Animated.View>
                     )
                 })}
+
+
 
                 {/* Celebration */}
                 {showCelebration && (

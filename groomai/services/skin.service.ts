@@ -2,6 +2,8 @@
 // Phase 7 — Skin Analysis service layer
 
 import { supabase } from '@/lib/supabase'
+import { analytics } from '@/lib/analytics'
+import { invokeEdgeFunction } from '@/lib/edgeFunctions'
 import { useUserStore } from '@/stores/user.store'
 
 export interface SkinConcern {
@@ -45,15 +47,17 @@ export const skinService = {
 
         if (!userId) throw new Error('Not authenticated')
 
-        const { data, error } = await supabase.functions.invoke('analyze-skin', {
-            body: { userId, imageBase64, subscriptionStatus },
+        const data = await invokeEdgeFunction<SkinAnalysisResult>('analyze-skin', {
+            userId,
+            imageBase64,
+            subscriptionStatus,
         })
 
-        if (error) throw error
-        if (data?.error === 'rate_limit_exceeded') {
-            throw Object.assign(new Error(data.message), { code: 'rate_limit_exceeded' })
+        if (!data?.error) {
+            analytics.skinAnalysisCompleted(data.skinType, data.overallScore)
         }
-        return data as SkinAnalysisResult
+
+        return data
     },
 
     async getLogs(): Promise<SkinAnalysisLog[]> {

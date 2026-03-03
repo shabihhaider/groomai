@@ -35,16 +35,16 @@ export const BADGES: BadgeDefinition[] = [
     { slug: 'level-ten', name: 'Grooming Master', description: 'Reached Level 10', xp: 500, rarity: 'legendary', condition: { type: 'level', value: 10 } },
 
     // Feature Badges
-    { slug: 'skin-guru', name: 'Skin Guru', description: 'Completed your first AI skin analysis', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'skin_analysis' } },
-    { slug: 'scanner-pro', name: 'Scanner Pro', description: 'Scanned your first product', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'product_scan' } },
-    { slug: 'style-explorer', name: 'Style Explorer', description: 'Saved your first hairstyle', xp: 75, rarity: 'common', condition: { type: 'feature', value: 'saved_hairstyle' } },
-    { slug: 'ar-enthusiast', name: 'AR Enthusiast', description: 'Tried on your first AR hairstyle', xp: 100, rarity: 'rare', condition: { type: 'feature', value: 'ar_tryon' } },
-    { slug: 'hair-tracker', name: 'Hair Detective', description: 'Completed your first hair tracking session', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'hair_tracking' } },
+    { slug: 'skin-guru', name: 'Skin Guru', description: 'Go to Skin Analysis and take your first selfie scan', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'skin_analysis' } },
+    { slug: 'scanner-pro', name: 'Scanner Pro', description: 'Open Product Scanner and scan any grooming product barcode', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'product_scan' } },
+    { slug: 'style-explorer', name: 'Style Explorer', description: 'Browse hairstyles and tap ♥ to save your first one', xp: 75, rarity: 'common', condition: { type: 'feature', value: 'saved_hairstyle' } },
+    { slug: 'ar-enthusiast', name: 'AR Enthusiast', description: 'Use the AR camera to try on a hairstyle', xp: 100, rarity: 'rare', condition: { type: 'feature', value: 'ar_tryon' } },
+    { slug: 'hair-tracker', name: 'Hair Detective', description: 'Take your first hair progress photo in Hair Loss Tracker', xp: 100, rarity: 'common', condition: { type: 'feature', value: 'hair_tracking' } },
 
     // Special Badges
     { slug: 'early-adopter', name: 'Early Adopter', description: 'Joined during the launch period', xp: 200, rarity: 'rare', condition: { type: 'special', value: 'early_adopter' } },
     { slug: 'premium-member', name: 'Premium Member', description: 'Subscribed to GroomAI Premium', xp: 300, rarity: 'epic', condition: { type: 'special', value: 'premium' } },
-    { slug: 'share-master', name: 'Share Master', description: 'Shared your barber card with a friend', xp: 75, rarity: 'common', condition: { type: 'feature', value: 'barber_card_share' } },
+    { slug: 'share-master', name: 'Share Master', description: 'Generate a Barber Card and share it via WhatsApp or Messages', xp: 75, rarity: 'common', condition: { type: 'feature', value: 'barber_card_share' } },
 ]
 
 export const LEVEL_TITLES: Record<number, string> = {

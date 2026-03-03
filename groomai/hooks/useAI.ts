@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { skinService } from '@/services/skin.service'
 import { productService } from '@/services/product.service'
 import { supabase } from '@/lib/supabase'
+import { invokeEdgeFunction } from '@/lib/edgeFunctions'
 import { useUserStore } from '@/stores/user.store'
 
 // ── Skin Analysis ──────────────────────────────────────────────────────────
@@ -56,14 +57,11 @@ export function useGenerateRoutine() {
     return useMutation({
         mutationFn: async () => {
             const subscriptionStatus = profile?.subscription_status ?? 'free'
-            const { data, error } = await supabase.functions.invoke('generate-routine', {
-                body: { userId, subscriptionStatus, profile },
+            return await invokeEdgeFunction<{ morning: any[]; night: any[]; remaining?: number }>('generate-routine', {
+                userId,
+                subscriptionStatus,
+                profile,
             })
-            if (error) throw error
-            if (data?.error === 'rate_limit_exceeded') {
-                throw Object.assign(new Error(data.message), { code: 'rate_limit_exceeded' })
-            }
-            return data as { morning: any[]; night: any[]; remaining?: number }
         },
     })
 }

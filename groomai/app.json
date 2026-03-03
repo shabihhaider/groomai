@@ -38,12 +38,13 @@
       },
       "package": "com.groomai.app",
       "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "WRITE_EXTERNAL_STORAGE",
-        "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED",
-        "SCHEDULE_EXACT_ALARM"
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -79,8 +80,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "f3e62425-0a26-43cb-98ac-795d73d64461"
       }
-    }
+    },
+    "owner": "shabihhaider"
   }
 }

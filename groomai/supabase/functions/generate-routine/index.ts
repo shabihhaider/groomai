@@ -8,6 +8,8 @@ import { OpenAI } from 'https://deno.land/x/openai@v4.52.2/mod.ts'
 // @ts-ignore: Deno import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { checkRateLimit, logAIUsage } from '../_shared/rateLimiter.ts'
+import { jsonResponse } from '../_shared/responses.ts'
+import { toPublicAIErrorBody } from '../_shared/aiErrors.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -23,37 +25,55 @@ Deno.serve(async (req: Request) => {
         const { userId, subscriptionStatus = 'free', profile } = await req.json()
 
         if (!userId || !profile) {
-            return new Response(
-                JSON.stringify({ error: 'userId and profile are required' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            return jsonResponse(
+                { error: 'invalid_request', message: 'userId and profile are required' },
+                400,
+                corsHeaders
             )
         }
 
         // Rate limit check — routine generation counts as 3 calls
         const { allowed, remaining } = await checkRateLimit(userId, 'generate_routine', subscriptionStatus)
         if (!allowed) {
-            return new Response(
-                JSON.stringify({
+            return jsonResponse(
+                {
                     error: 'rate_limit_exceeded',
                     message: 'Daily routine generation limit reached. Try again tomorrow.',
                     remaining: 0,
-                }),
-                { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                },
+                429,
+                corsHeaders
             )
         }
 
-        const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') ?? '' })
+        const openaiKey = Deno.env.get('OPENAI_API_KEY')
+        if (!openaiKey) {
+            return jsonResponse(
+                {
+                    error: 'ai_unavailable',
+                    code: 'ai_missing_key',
+                    message: 'AI is temporarily unavailable.',
+                    retryable: false,
+                },
+                503,
+                corsHeaders
+            )
+        }
+
+        const openai = new OpenAI({ apiKey: openaiKey })
         const admin = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         )
 
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-                {
-                    role: 'user',
-                    content: `Create a personalized daily grooming routine for a man with the following profile:
+        let response
+        try {
+            response = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'user',
+                        content: `Create a personalized daily grooming routine for a man with the following profile:
 - Face shape: ${profile.face_shape ?? 'unknown'}
 - Skin type: ${profile.skin_type ?? 'normal'}
 - Skin concerns: ${Array.isArray(profile.skin_concerns) ? profile.skin_concerns.join(', ') : 'none'}
@@ -87,26 +107,25 @@ Rules:
 - If has_beard is true, include beard care steps
 - Be specific about products, not generic
 - Only return the JSON object, nothing else`,
-                },
-            ],
-            temperature: 0.6,
-            max_tokens: 1200,
-            response_format: { type: 'json_object' },
-        })
+                    },
+                ],
+                temperature: 0.6,
+                max_tokens: 1200,
+                response_format: { type: 'json_object' },
+            })
+        } catch (err) {
+            console.error('generate-routine OpenAI error:', err)
+            return jsonResponse(toPublicAIErrorBody(err), 503, corsHeaders)
+        }
 
         const routine = JSON.parse(response.choices[0].message.content!)
 
         // Log AI usage
         await logAIUsage(userId, 'generate_routine', { model: 'gpt-4o', profile_hash: userId })
 
-        return new Response(JSON.stringify({ ...routine, remaining: remaining - 1 }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        return jsonResponse({ ...routine, remaining: remaining - 1 }, 200, corsHeaders)
     } catch (error) {
         console.error('generate-routine error:', error)
-        return new Response(
-            JSON.stringify({ error: 'Routine generation failed', details: error instanceof Error ? error.message : String(error) }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return jsonResponse({ error: 'server_error', message: 'Request failed' }, 500, corsHeaders)
     }
 })

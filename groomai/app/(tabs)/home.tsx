@@ -16,8 +16,10 @@ import { useStreak } from '@/hooks/useHabits'
 import { getCompletionRatio } from '@/hooks/useHabits'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
-import { useAffiliateRecommendations } from '@/hooks/useAffiliate'
+import { useGroupedAffiliateRecommendations } from '@/hooks/useAffiliate'
 import { AffiliateProductCard } from '@/components/ui/AffiliateProductCard'
+import { DISPLAY_GROUP_LABELS } from '@/constants/affiliateProducts'
+import { getDailyTip } from '@/constants/dailyTips'
 
 function getGreeting(): string {
     const hour = new Date().getHours()
@@ -26,22 +28,19 @@ function getGreeting(): string {
     return 'Good evening'
 }
 
+function getDateString(): string {
+    const now = new Date()
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${days[now.getDay()]} \u2022 ${months[now.getMonth()]} ${now.getDate()}`
+}
+
 function getLevel(xp: number): number {
     for (let level = 10; level >= 1; level--) {
         if (xp >= LEVEL_THRESHOLDS[level]) return level
     }
     return 1
 }
-
-const DAILY_TIPS = [
-    'Consistency is key — even a 2-minute routine is better than skipping.',
-    'Apply products in order: lightest to heaviest consistency.',
-    'Your skin repairs itself at night — don\'t skip your evening routine.',
-    'Replace your razor blade every 5-7 shaves to avoid irritation.',
-    'Vitamin C serum in the morning, retinol at night. Never mix them.',
-    'Cold rinse after conditioning locks in moisture for shinier hair.',
-    'Stress shows on your skin. Take 60 seconds to breathe deeply today.',
-]
 
 function ActionCard({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
     const scale = useSharedValue(1)
@@ -67,7 +66,7 @@ export default function HomeScreen() {
     const { data: todayLogs } = useTodayLogs()
     const { data: streak } = useStreak()
 
-    const firstName = profile?.full_name?.split(' ')[0] ?? 'King'
+    const firstName = profile?.full_name?.split(' ')[0] || 'there'
     const totalXP = profile?.total_xp ?? 0
     const level = getLevel(totalXP)
     const levelTitle = LEVEL_TITLES[level] ?? 'Rookie'
@@ -86,11 +85,9 @@ export default function HomeScreen() {
     const nightRatio = getCompletionRatio(nightRoutine?.routine_steps ?? [], todayLogs ?? [])
 
     // Daily tip
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
-    const dailyTip = DAILY_TIPS[dayOfYear % DAILY_TIPS.length]
+    const dailyTip = getDailyTip()
 
-    const { data: affiliateRecs } = useAffiliateRecommendations()
-    const topRecs = affiliateRecs?.slice(0, 3) ?? []
+    const { data: groupedRecs } = useGroupedAffiliateRecommendations()
 
     const actionScale = useSharedValue(1)
     const actionAnimated = useAnimatedStyle(() => ({ transform: [{ scale: actionScale.value }] }))
@@ -107,6 +104,7 @@ export default function HomeScreen() {
                         <Animated.View entering={FadeInDown.duration(400)}>
                             <Text style={styles.greeting}>{getGreeting()},</Text>
                             <Text style={styles.name}>{firstName}.</Text>
+                            <Text style={styles.dateString}>{getDateString()}</Text>
                         </Animated.View>
                     </LinearGradient>
 
@@ -144,7 +142,7 @@ export default function HomeScreen() {
                         />
                         {level < 10 && (
                             <Text style={styles.xpBarLabel}>
-                                {nextThreshold - totalXP} XP to Level {level + 1}
+                                {totalXP.toLocaleString()} / {nextThreshold.toLocaleString()} XP
                             </Text>
                         )}
                     </Animated.View>
@@ -231,20 +229,28 @@ export default function HomeScreen() {
                         <Text style={styles.tipText}>{dailyTip}</Text>
                     </Animated.View>
 
-                    {/* Products For You */}
-                    {topRecs.length > 0 && (
+                    {/* Products For You — Categorized */}
+                    {(groupedRecs ?? []).length > 0 && (
                         <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.affiliateSection}>
                             <Text style={styles.sectionTitle}>Products For You</Text>
-                            <Text style={styles.sectionSubtitle}>Matched to your skin type</Text>
-                            <View style={styles.affiliateList}>
-                                {topRecs.map((product) => (
-                                    <AffiliateProductCard
-                                        key={product.id}
-                                        product={product}
-                                        source="home"
-                                    />
-                                ))}
-                            </View>
+                            <Text style={styles.sectionSubtitle}>Matched to your skin type & preferences</Text>
+                            {(groupedRecs ?? []).map((group) => {
+                                const label = DISPLAY_GROUP_LABELS[group.group]
+                                return (
+                                    <View key={group.group} style={styles.productGroup}>
+                                        <Text style={styles.groupTitle}>{label.emoji} {label.title}</Text>
+                                        <View style={styles.affiliateList}>
+                                            {group.products.map((product) => (
+                                                <AffiliateProductCard
+                                                    key={product.id}
+                                                    product={product}
+                                                    source={`home-${group.group}`}
+                                                />
+                                            ))}
+                                        </View>
+                                    </View>
+                                )
+                            })}
                         </Animated.View>
                     )}
 
@@ -257,6 +263,23 @@ export default function HomeScreen() {
                         <ActionCard icon="list" label="Routines" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/routines') }} />
                         <ActionCard icon="trophy" label="Badges" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/tracker') }} />
                         <ActionCard icon="cut" label="Barber" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/barber') }} />
+                    </Animated.View>
+
+                    {/* Tools */}
+                    <Animated.View entering={FadeInDown.delay(500).duration(400)}>
+                        <Text style={[styles.sectionTitle, { marginTop: Spacing.xl }]}>Tools</Text>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInDown.delay(520).duration(400)} style={styles.actionsRow}>
+                        <ActionCard icon="camera" label="Skin AI" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/skin-analysis') }} />
+                        <ActionCard icon="barcode" label="Scan" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/product-scanner') }} />
+                        <ActionCard icon="sparkles" label="AI Routine" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/ai-routine') }} />
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInDown.delay(540).duration(400)} style={[styles.actionsRow, { marginTop: Spacing.sm }]}
+                    >
+                        <ActionCard icon="pulse" label="Hair Loss" onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/hair-loss-tracker') }} />
+                        <View style={{ flex: 2 }} />
                     </Animated.View>
                 </ScrollView>
             </AnimatedScreen>
@@ -285,6 +308,14 @@ const styles = StyleSheet.create({
     affiliateList: {
         gap: Spacing.sm,
     },
+    productGroup: {
+        marginBottom: Spacing.md,
+    },
+    groupTitle: {
+        ...Typography.bodyMedium,
+        color: Colors.text.secondary,
+        marginBottom: Spacing.xs,
+    },
     heroGradient: {
         marginHorizontal: -Spacing.lg,
         paddingHorizontal: Spacing.lg,
@@ -293,13 +324,20 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm,
     },
     greeting: {
-        ...Typography.h2,
+        fontSize: 16,
+        fontWeight: '500' as const,
+        lineHeight: 22,
         color: Colors.text.secondary,
     },
     name: {
         ...Typography.display,
         color: Colors.text.primary,
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xs,
+    },
+    dateString: {
+        ...Typography.small,
+        color: Colors.text.tertiary,
+        marginBottom: Spacing.md,
     },
 
     // Stats Row
@@ -315,7 +353,7 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: Colors.bg.tertiary,
+        borderColor: 'rgba(201,168,76,0.15)',
     },
     statEmoji: {
         fontSize: 24,
@@ -323,7 +361,7 @@ const styles = StyleSheet.create({
     },
     statValue: {
         ...Typography.h3,
-        color: Colors.text.primary,
+        color: Colors.gold.primary,
     },
     statLabel: {
         ...Typography.caption,

@@ -11,10 +11,12 @@ import { Typography } from '@/constants/typography'
 import { Spacing, BorderRadius } from '@/constants/spacing'
 import { useUserStore } from '@/stores/user.store'
 import { useSubscriptionStore } from '@/stores/subscription.store'
-import { useRoutines, useTodayLogs, useSeedRoutines, useCreateRoutine } from '@/hooks/useRoutine'
+import { useRoutines, useTodayLogs, useSeedRoutines, useCreateRoutine, useActivateTemplate } from '@/hooks/useRoutine'
 import { getCompletionRatio } from '@/hooks/useHabits'
 import { RoutineCard } from '@/components/routine/RoutineCard'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
+import { getDailyTip } from '@/constants/dailyTips'
+import { ROUTINE_TEMPLATES, type RoutineTemplate } from '@/constants/defaultRoutines'
 
 function getGreeting(): string {
     const hour = new Date().getHours()
@@ -30,17 +32,6 @@ function getDateString(): string {
     return `${days[now.getDay()]} • ${months[now.getMonth()]} ${now.getDate()}`
 }
 
-// Daily tips that rotate based on the day of the year
-const DAILY_TIPS = [
-    'Try splashing cold water on your face after cleansing — it helps tighten pores.',
-    'Apply sunscreen every morning, even on cloudy days. UV damage is the #1 cause of premature aging.',
-    'Change your pillowcase every 2-3 days to reduce breakouts.',
-    'Drink at least 8 glasses of water today. Hydration shows in your skin.',
-    'Pat your face dry instead of rubbing — it reduces irritation.',
-    'Exfoliate no more than 2-3 times per week to avoid over-stripping your skin.',
-    'Apply moisturizer to slightly damp skin for better absorption.',
-]
-
 export default function RoutinesScreen() {
     const profile = useUserStore((s) => s.profile)
     const isPremium = useSubscriptionStore((s) => s.isPremium)
@@ -48,6 +39,9 @@ export default function RoutinesScreen() {
     const { data: todayLogs } = useTodayLogs()
     const seedRoutines = useSeedRoutines()
     const createRoutine = useCreateRoutine()
+    const activateTemplate = useActivateTemplate()
+
+    const [showTemplates, setShowTemplates] = useState(false)
 
     // Create Custom Routine sheet
     const sheetRef = useRef<BottomSheetLib>(null)
@@ -69,6 +63,15 @@ export default function RoutinesScreen() {
         )
     }
 
+    function handleActivateTemplate(template: RoutineTemplate) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        activateTemplate.mutate(template, {
+            onSuccess: () => {
+                setShowTemplates(false)
+            },
+        })
+    }
+
     const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
     const greeting = `${getGreeting()}, ${firstName}.`
     const dateString = getDateString()
@@ -86,8 +89,7 @@ export default function RoutinesScreen() {
     const customRoutines = useMemo(() => routines?.filter((r: any) => r.type === 'custom') ?? [], [routines])
 
     // Today's tip
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
-    const dailyTip = DAILY_TIPS[dayOfYear % DAILY_TIPS.length]
+    const dailyTip = getDailyTip()
 
     const createBtnScale = useSharedValue(1)
     const createBtnAnimated = useAnimatedStyle(() => ({ transform: [{ scale: createBtnScale.value }] }))
@@ -204,6 +206,80 @@ export default function RoutinesScreen() {
                                     )}
                                 </Pressable>
                             </Animated.View>
+                        </Animated.View>
+
+                        {/* Browse Templates Section */}
+                        <Animated.View entering={FadeInDown.delay(350).duration(400)}>
+                            <Pressable
+                                style={styles.templateToggle}
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                                    setShowTemplates(!showTemplates)
+                                }}
+                            >
+                                <View style={styles.templateToggleLeft}>
+                                    <Ionicons name="grid-outline" size={18} color={Colors.gold.primary} />
+                                    <Text style={styles.templateToggleText}>Browse Templates</Text>
+                                </View>
+                                <Ionicons
+                                    name={showTemplates ? 'chevron-up' : 'chevron-down'}
+                                    size={18}
+                                    color={Colors.text.secondary}
+                                />
+                            </Pressable>
+
+                            {showTemplates && (
+                                <Animated.View entering={FadeInDown.duration(350)} style={styles.templatesGrid}>
+                                    {ROUTINE_TEMPLATES.map((template, index) => {
+                                        const locked = template.isPremium && !isPremium
+                                        return (
+                                            <Animated.View
+                                                key={template.id}
+                                                entering={FadeInDown.delay(index * 60).duration(350)}
+                                            >
+                                                <Pressable
+                                                    style={[styles.templateCard, locked && styles.templateCardLocked]}
+                                                    onPress={() => {
+                                                        if (locked) {
+                                                            router.push('/paywall')
+                                                        } else {
+                                                            handleActivateTemplate(template)
+                                                        }
+                                                    }}
+                                                    disabled={activateTemplate.isPending}
+                                                >
+                                                    <View style={styles.templateHeader}>
+                                                        <Text style={styles.templateEmoji}>{template.emoji}</Text>
+                                                        <View style={styles.templateInfo}>
+                                                            <Text style={styles.templateName}>{template.name}</Text>
+                                                            <Text style={styles.templateTagline}>{template.tagline}</Text>
+                                                        </View>
+                                                        {locked && (
+                                                            <View style={styles.templateProBadge}>
+                                                                <Text style={styles.templateProText}>PRO</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.templateDesc} numberOfLines={2}>
+                                                        {template.description}
+                                                    </Text>
+                                                    <View style={styles.templateMeta}>
+                                                        <Ionicons name="list-outline" size={14} color={Colors.text.tertiary} />
+                                                        <Text style={styles.templateMetaText}>
+                                                            {template.steps.length} steps
+                                                        </Text>
+                                                        <Text style={styles.templateDot}>•</Text>
+                                                        <Ionicons name="time-outline" size={14} color={Colors.text.tertiary} />
+                                                        <Text style={styles.templateMetaText}>
+                                                            {Math.ceil(template.steps.reduce((a, s) => a + s.duration_seconds, 0) / 60)} min
+                                                        </Text>
+                                                    </View>
+                                                </Pressable>
+                                            </Animated.View>
+                                        )
+                                    })}
+                                </Animated.View>
+                            )}
                         </Animated.View>
 
                         {/* Daily Tip */}
@@ -358,6 +434,98 @@ const styles = StyleSheet.create({
         ...Typography.body,
         color: Colors.text.secondary,
         lineHeight: 22,
+    },
+
+    // Template styles
+    templateToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+        marginBottom: Spacing.md,
+    },
+    templateToggleLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    templateToggleText: {
+        ...Typography.bodyMedium,
+        color: Colors.text.primary,
+    },
+    templatesGrid: {
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    templateCard: {
+        backgroundColor: Colors.bg.secondary,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+    },
+    templateCardLocked: {
+        opacity: 0.7,
+        borderColor: Colors.overlay.gold,
+    },
+    templateHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginBottom: Spacing.xs,
+    },
+    templateEmoji: {
+        fontSize: 28,
+    },
+    templateInfo: {
+        flex: 1,
+    },
+    templateName: {
+        ...Typography.bodyMedium,
+        color: Colors.text.primary,
+        fontWeight: '700',
+    },
+    templateTagline: {
+        ...Typography.caption,
+        color: Colors.gold.primary,
+        fontStyle: 'italic',
+    },
+    templateProBadge: {
+        backgroundColor: Colors.gold.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: BorderRadius.sm,
+    },
+    templateProText: {
+        ...Typography.caption,
+        color: Colors.text.inverse,
+        fontWeight: '700',
+        fontSize: 10,
+    },
+    templateDesc: {
+        ...Typography.small,
+        color: Colors.text.secondary,
+        marginBottom: Spacing.xs,
+        lineHeight: 18,
+    },
+    templateMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    templateMetaText: {
+        ...Typography.caption,
+        color: Colors.text.tertiary,
+    },
+    templateDot: {
+        ...Typography.caption,
+        color: Colors.text.tertiary,
+        marginHorizontal: 2,
     },
 
     // Bottom sheet styles

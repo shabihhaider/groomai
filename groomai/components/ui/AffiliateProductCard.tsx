@@ -4,6 +4,7 @@
 import { Pressable, View, Text, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { affiliateService } from '@/services/affiliate.service'
+import { AFFILIATES_ENABLED } from '@/constants/affiliateProducts'
 import { Colors } from '@/constants/colors'
 import { Typography } from '@/constants/typography'
 import { Spacing, BorderRadius } from '@/constants/spacing'
@@ -24,8 +25,9 @@ export function AffiliateProductCard({ product, source, compact }: AffiliateProd
     if (compact) {
         return (
             <Pressable
-                style={({ pressed }) => [styles.compact, pressed && { opacity: 0.75 }]}
+                style={({ pressed }) => [styles.compact, pressed && AFFILIATES_ENABLED && { opacity: 0.75 }]}
                 onPress={handlePress}
+                disabled={!AFFILIATES_ENABLED}
             >
                 <Text style={styles.compactEmoji}>💡</Text>
                 <View style={styles.compactBody}>
@@ -33,15 +35,20 @@ export function AffiliateProductCard({ product, source, compact }: AffiliateProd
                     <Text style={styles.compactName} numberOfLines={1}>{product.name}</Text>
                 </View>
                 <Text style={styles.compactPrice}>{product.price}</Text>
-                <Ionicons name="open-outline" size={14} color={Colors.gold.primary} />
+                {AFFILIATES_ENABLED ? (
+                    <Ionicons name="open-outline" size={14} color={Colors.gold.primary} />
+                ) : (
+                    <Text style={styles.comingSoonBadge}>Soon</Text>
+                )}
             </Pressable>
         )
     }
 
     return (
         <Pressable
-            style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [styles.card, pressed && AFFILIATES_ENABLED && { opacity: 0.8 }]}
             onPress={handlePress}
+            disabled={!AFFILIATES_ENABLED}
         >
             <View style={styles.ratingRow}>
                 <Ionicons name="star" size={12} color={Colors.gold.primary} />
@@ -54,10 +61,17 @@ export function AffiliateProductCard({ product, source, compact }: AffiliateProd
                     <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
                     <Text style={styles.price}>{product.price}</Text>
                 </View>
-                <View style={styles.ctaBtn}>
-                    <Text style={styles.ctaText}>Shop</Text>
-                    <Ionicons name="arrow-forward" size={14} color={Colors.bg.primary} />
-                </View>
+                {AFFILIATES_ENABLED ? (
+                    <View style={styles.ctaBtn}>
+                        <Text style={styles.ctaText}>Shop</Text>
+                        <Ionicons name="arrow-forward" size={14} color={Colors.bg.primary} />
+                    </View>
+                ) : (
+                    <View style={styles.comingSoonBtn}>
+                        <Ionicons name="time-outline" size={14} color={Colors.text.tertiary} />
+                        <Text style={styles.comingSoonText}>Soon</Text>
+                    </View>
+                )}
             </View>
         </Pressable>
     )
@@ -98,4 +112,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12, paddingVertical: 6,
     },
     ctaText: { ...Typography.small, color: Colors.bg.primary, fontWeight: '700' },
+    comingSoonBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        borderWidth: 1, borderColor: Colors.bg.tertiary,
+        borderRadius: BorderRadius.sm,
+        paddingHorizontal: 10, paddingVertical: 6,
+    },
+    comingSoonText: { ...Typography.small, color: Colors.text.tertiary, fontWeight: '600' },
+    comingSoonBadge: { ...Typography.caption, color: Colors.text.tertiary, fontWeight: '600', fontSize: 10 },
 })

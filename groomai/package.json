@@ -58,7 +58,8 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "@types/react": "~19.1.10"
+    "@types/react": "~19.1.10",
+    "supabase": "^2.76.15"
   },
   "private": true
 }

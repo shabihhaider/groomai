@@ -8,14 +8,18 @@ import { Colors } from '@/constants/colors'
 import { Typography } from '@/constants/typography'
 import { Spacing, BorderRadius } from '@/constants/spacing'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/queryClient'
 import { useUserStore } from '@/stores/user.store'
 import { useSubscriptionStore } from '@/stores/subscription.store'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
 import { Avatar } from '@/components/ui/Avatar'
+import { useAffiliateRecommendations } from '@/hooks/useAffiliate'
+import { AffiliateProductCard } from '@/components/ui/AffiliateProductCard'
 
 export default function ProfileScreen() {
     const profile = useUserStore((s) => s.profile)
     const isPremium = useSubscriptionStore((s) => s.isPremium)
+    const affiliateRecs = useAffiliateRecommendations()
     const signOutScale = useSharedValue(1)
 
     const signOutAnimated = useAnimatedStyle(() => ({
@@ -32,6 +36,10 @@ export default function ProfileScreen() {
                 onPress: async () => {
                     await supabase.auth.signOut()
                     useUserStore.getState().reset()
+                    useSubscriptionStore.getState().reset()
+                    queryClient.clear() // Wipe all cached queries from previous user
+                    // Navigate to auth welcome screen
+                    router.replace('/(auth)/welcome')
                 },
             },
         ])
@@ -112,6 +120,22 @@ export default function ProfileScreen() {
                         </View>
                     </Animated.View>
 
+                    {affiliateRecs.data?.length ? (
+                        <Animated.View entering={FadeInDown.delay(260).duration(400)} style={styles.section}>
+                            <Text style={styles.sectionTitle}>My Kit</Text>
+                            <View style={styles.kitList}>
+                                {affiliateRecs.data.slice(0, 3).map((product) => (
+                                    <AffiliateProductCard
+                                        key={product.id}
+                                        product={product}
+                                        source="profile_kit"
+                                        compact
+                                    />
+                                ))}
+                            </View>
+                        </Animated.View>
+                    ) : null}
+
                     <Animated.View entering={FadeInDown.delay(300).duration(400)} style={{ marginTop: Spacing.lg }}>
                         <Animated.View style={signOutAnimated}>
                             <Pressable
@@ -185,6 +209,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md,
     },
     settingsLabel: { ...Typography.body, color: Colors.text.primary, flex: 1 },
+    kitList: { gap: Spacing.xs },
     signOutBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
         paddingVertical: Spacing.md, borderRadius: BorderRadius.md,

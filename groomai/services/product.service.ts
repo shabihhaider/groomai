@@ -2,6 +2,8 @@
 // Phase 7 — Product Ingredient Scanner service layer
 
 import { supabase } from '@/lib/supabase'
+import { analytics } from '@/lib/analytics'
+import { invokeEdgeFunction } from '@/lib/edgeFunctions'
 import { useUserStore } from '@/stores/user.store'
 
 export interface FlaggedIngredient {
@@ -88,23 +90,18 @@ export const productService = {
 
         if (!userId) throw new Error('Not authenticated')
 
-        const { data, error } = await supabase.functions.invoke('analyze-product', {
-            body: {
-                userId,
-                subscriptionStatus,
-                ...params,
-                userProfile: {
-                    skinType: profile?.skin_type,
-                    skinConcerns: profile?.skin_concerns,
-                },
+        const data = await invokeEdgeFunction<ProductAnalysis>('analyze-product', {
+            userId,
+            subscriptionStatus,
+            ...params,
+            userProfile: {
+                skinType: profile?.skin_type,
+                skinConcerns: profile?.skin_concerns,
             },
         })
 
-        if (error) throw error
-        if (data?.error === 'rate_limit_exceeded') {
-            throw Object.assign(new Error(data.message), { code: 'rate_limit_exceeded' })
-        }
-        return data as ProductAnalysis
+        analytics.productScanned(data.verdict, params.barcode)
+        return data
     },
 
     async getScans(): Promise<ProductScan[]> {

@@ -7,6 +7,7 @@ import { habitService, badgeService } from '@/services/habit.service'
 import { useUserStore } from '@/stores/user.store'
 import { updateStreak } from '@/utils/streaks'
 import { router } from 'expo-router'
+import type { RoutineTemplate } from '@/constants/defaultRoutines'
 
 // ── Fetch user's active routines ──
 export function useRoutines() {
@@ -122,6 +123,22 @@ export function useCreateRoutine() {
         mutationFn: async (data: { name: string; type: 'morning' | 'night' | 'custom' }) => {
             if (!userId) throw new Error('Not authenticated')
             return routineService.createRoutine(userId, data)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['routines'] })
+        },
+    })
+}
+
+// ── Activate a routine template ──
+export function useActivateTemplate() {
+    const queryClient = useQueryClient()
+    const userId = useUserStore((s) => s.session?.user?.id)
+
+    return useMutation({
+        mutationFn: async (template: RoutineTemplate) => {
+            if (!userId) throw new Error('Not authenticated')
+            return routineService.activateTemplate(userId, template)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['routines'] })

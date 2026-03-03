@@ -2,7 +2,7 @@
 // Phase 9 — React Query hooks for affiliate product recommendations + scan history
 
 import { useQuery } from '@tanstack/react-query'
-import { affiliateService } from '@/services/affiliate.service'
+import { affiliateService, type ProductGroup } from '@/services/affiliate.service'
 import { productService } from '@/services/product.service'
 import { useUserStore } from '@/stores/user.store'
 
@@ -23,6 +23,28 @@ export function useAffiliateRecommendations() {
                 has_beard: profile?.has_beard,
             }),
         staleTime: Infinity,  // local data, never stale
+        enabled: !!profile,
+    })
+}
+
+/**
+ * Returns affiliate recommendations grouped by display category
+ * (Skincare, Haircare, Beard, Shaving, Tools) — each group contains
+ * up to 3 products matched to the user's skin type and preferences.
+ */
+export function useGroupedAffiliateRecommendations() {
+    const profile = useUserStore((s) => s.profile)
+
+    return useQuery<ProductGroup[]>({
+        queryKey: ['affiliate-grouped', profile?.skin_type, profile?.has_beard, profile?.budget_range],
+        queryFn: () =>
+            affiliateService.getGroupedRecommendations({
+                skin_type: profile?.skin_type,
+                skin_concerns: profile?.skin_concerns,
+                budget_range: profile?.budget_range,
+                has_beard: profile?.has_beard,
+            }),
+        staleTime: Infinity,
         enabled: !!profile,
     })
 }

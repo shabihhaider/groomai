@@ -25,6 +25,7 @@ import { Spacing, BorderRadius } from '@/constants/spacing'
 import { useProductLookup } from '@/hooks/useAI'
 import { type ProductAnalysis } from '@/services/product.service'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
+import { useSubscriptionStore } from '@/stores/subscription.store'
 
 const VERDICT_CONFIG = {
     safe: { color: '#34C759', bg: '#34C75922', label: '✅ SAFE FOR YOU', icon: 'checkmark-circle' },
@@ -156,7 +157,36 @@ export default function ProductScannerScreen() {
     const [permission, requestPermission] = useCameraPermissions()
     const [scanned, setScanned] = useState(false)
     const [productNotFound, setProductNotFound] = useState(false)
+    const isPremium = useSubscriptionStore((s) => s.isPremium)
     const productLookup = useProductLookup()
+
+    if (!isPremium) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <AnimatedScreen>
+                    <View style={styles.headerBar}>
+                        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+                            <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
+                        </Pressable>
+                        <Text style={styles.headerTitle}>Product Scanner</Text>
+                        <View style={styles.proPill}>
+                            <Ionicons name="diamond" size={12} color={Colors.gold.primary} />
+                            <Text style={styles.proPillText}>PRO</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.centered}>
+                        <Ionicons name="lock-closed" size={56} color={Colors.gold.primary} />
+                        <Text style={styles.permTitle}>Premium Feature</Text>
+                        <Text style={styles.permSubtext}>Product Scanner is available on Premium.</Text>
+                        <Pressable style={styles.allowBtn} onPress={() => router.push('/paywall')}>
+                            <Text style={styles.allowBtnText}>Upgrade to Premium</Text>
+                        </Pressable>
+                    </View>
+                </AnimatedScreen>
+            </SafeAreaView>
+        )
+    }
 
     if (!permission) {
         return <SafeAreaView style={styles.container}><ActivityIndicator color={Colors.gold.primary} style={{ flex: 1 }} /></SafeAreaView>
@@ -195,6 +225,8 @@ export default function ProductScannerScreen() {
                     setProductNotFound(true)
                 } else if (err?.code === 'rate_limit_exceeded') {
                     Alert.alert('Daily Limit Reached', err.message)
+                } else if (err?.code === 'ai_unavailable') {
+                    Alert.alert('AI Temporarily Unavailable', 'Please try again in a few minutes.')
                 } else {
                     Alert.alert('Error', 'Could not analyze this product. Please try again.')
                 }
@@ -303,6 +335,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
     },
     headerTitle: { ...Typography.h3, color: Colors.text.primary },
+    proPill: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        backgroundColor: Colors.overlay.gold,
+        paddingHorizontal: 10, paddingVertical: 4,
+        borderRadius: BorderRadius.full,
+        borderWidth: 1, borderColor: Colors.gold.muted,
+    },
+    proPillText: { ...Typography.caption, color: Colors.gold.primary, fontWeight: '700' },
     backBtn: {
         width: 40, height: 40, borderRadius: 20,
         backgroundColor: Colors.bg.secondary,

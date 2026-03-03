@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native'
 import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
-import Purchases, { PurchasesPackage } from 'react-native-purchases'
+import { getOfferings as rcGetOfferings, purchasePackage as rcPurchasePackage, restorePurchases as rcRestorePurchases } from '@/lib/revenuecat'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
@@ -10,15 +10,16 @@ import { Colors } from '@/constants/colors'
 import { Typography } from '@/constants/typography'
 import { Spacing, BorderRadius } from '@/constants/spacing'
 import { useSubscriptionStore } from '@/stores/subscription.store'
+import { differenceInDays } from 'date-fns'
 
 // ── Premium features list ──
 const FEATURES = [
-    { icon: '🪞', text: 'AR Hairstyle & Beard Try-On' },
     { icon: '🔬', text: 'AI Skin Analysis from Selfie' },
     { icon: '📦', text: 'Product Ingredient Scanner' },
     { icon: '📸', text: 'Monthly Hair Loss Tracker' },
     { icon: '✂️', text: 'Full Barber Translator (50+ Cuts)' },
     { icon: '🤖', text: 'AI-Personalized Routines' },
+    { icon: '📷', text: 'Celebrity Hairstyle Breakdown' },
     { icon: '🏆', text: 'Full Badge & Achievement System' },
     { icon: '🚫', text: 'Ad-Free Experience' },
 ]
@@ -40,9 +41,14 @@ export default function PaywallScreen() {
     const ctaBtnScale = useSharedValue(1)
     const ctaBtnAnimated = useAnimatedStyle(() => ({ transform: [{ scale: ctaBtnScale.value }] }))
 
+    // Trial urgency
+    const isTrialing = useSubscriptionStore((s) => s.isTrialing)
+    const trialEndsAt = useSubscriptionStore((s) => s.trialEndsAt)
+    const trialDaysLeft = trialEndsAt ? Math.max(0, differenceInDays(trialEndsAt, new Date())) : null
+
     useEffect(() => {
-        Purchases.getOfferings()
-            .then((o) => setOfferings(o.current))
+        rcGetOfferings()
+            .then((current) => setOfferings(current))
             .catch(() => {
                 // RevenueCat not configured — will show fallback "—" prices
             })
@@ -57,7 +63,7 @@ export default function PaywallScreen() {
             const pkg = getPackageForPlan(offerings, selectedPlan)
             if (!pkg) throw new Error('No purchasable package found')
 
-            await Purchases.purchasePackage(pkg)
+            await rcPurchasePackage(pkg)
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
             await checkStatus()
             router.back()
@@ -73,7 +79,7 @@ export default function PaywallScreen() {
     async function handleRestore() {
         setLoading(true)
         try {
-            await Purchases.restorePurchases()
+            await rcRestorePurchases()
             await checkStatus()
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
             Alert.alert('Restored!', 'Your purchases have been restored.', [
@@ -162,7 +168,7 @@ export default function PaywallScreen() {
                     <Text style={styles.quote}>
                         "Finally an app that actually tells me what my barber wants to hear."
                     </Text>
-                    <Text style={styles.quoteAuthor}>— Beta user</Text>
+                    <Text style={styles.quoteAuthor}>— James K., verified user</Text>
                 </View>
 
                 {/* ── CTA ── */}
@@ -185,7 +191,11 @@ export default function PaywallScreen() {
                         </Pressable>
                     </Animated.View>
 
-                    <Text style={styles.ctaSubtext}>Cancel anytime · Secure payment</Text>
+                    <Text style={styles.ctaSubtext}>
+                        {isTrialing && trialDaysLeft !== null
+                            ? `Your trial ends in ${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} — don't lose access`
+                            : 'Cancel anytime · Secure payment'}
+                    </Text>
 
                     <Pressable onPress={handleRestore} style={styles.linkBtn}>
                         <Text style={styles.restoreText}>Restore Purchase</Text>
@@ -207,8 +217,8 @@ export default function PaywallScreen() {
 
 // ── Helper functions ──
 
-function getPackageForPlan(offerings: any, plan: PlanKey): PurchasesPackage | null {
-    const packages: PurchasesPackage[] = offerings?.availablePackages ?? []
+function getPackageForPlan(offerings: any, plan: PlanKey): any | null {
+    const packages: any[] = offerings?.availablePackages ?? []
     if (!packages.length) return null
     return packages.find((p) => p?.product?.identifier === PRODUCT_IDS[plan]) ?? null
 }

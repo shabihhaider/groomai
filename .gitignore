@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native builds
+ios/
+android/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Supabase
+supabase/.temp/
+
+# Build artifacts
+*.tar.gz
+
+# Backup files
+*.backup
+
+# Expo generated
+expo-env.d.ts

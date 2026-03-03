@@ -196,8 +196,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
             .eq('id', session.user.id)
         if (error) throw error
 
-        // Award onboarding XP
-        await supabase.rpc('increment_xp', { user_id: session.user.id, amount: 150 })
+        // Award onboarding XP (non-critical — don't fail onboarding if XP call fails)
+        try {
+            await supabase.rpc('increment_xp', { user_id: session.user.id, amount: 150 })
+        } catch (xpErr) {
+            console.warn('Failed to award onboarding XP:', xpErr)
+        }
     },
 
     // ── Reset ──

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { DEFAULT_ROUTINES, type DefaultStep } from '@/constants/defaultRoutines'
+import { DEFAULT_ROUTINES, type DefaultStep, ROUTINE_TEMPLATES, type RoutineTemplate } from '@/constants/defaultRoutines'
 
 export const routineService = {
     async getRoutines(userId: string) {
@@ -114,5 +114,41 @@ export const routineService = {
             .eq('id', routineId)
 
         if (error) throw error
+    },
+
+    /**
+     * Activate a routine template — creates a custom routine with all template steps.
+     */
+    async activateTemplate(userId: string, template: RoutineTemplate) {
+        // Create the routine
+        const { data: routine, error: routineErr } = await supabase
+            .from('routines')
+            .insert({
+                user_id: userId,
+                name: `${template.emoji} ${template.name}`,
+                type: 'custom',
+            })
+            .select()
+            .single()
+
+        if (routineErr) throw routineErr
+
+        // Insert all steps
+        const stepRows = template.steps.map((step, index) => ({
+            routine_id: routine.id,
+            step_order: index + 1,
+            title: step.title,
+            description: step.description,
+            category: step.category,
+            duration_seconds: step.duration_seconds,
+        }))
+
+        const { error: stepsErr } = await supabase
+            .from('routine_steps')
+            .insert(stepRows)
+
+        if (stepsErr) throw stepsErr
+
+        return routine
     },
 }

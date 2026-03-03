@@ -12,6 +12,7 @@ import {
     Clipboard,
     Linking,
     Share,
+    Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -28,12 +29,25 @@ import { barberService } from '@/services/barber.service'
 import { useSavedHairstyleIds, useSaveHairstyle, useUnsaveHairstyle } from '@/hooks/useBarber'
 import { BarberCardModal } from '@/components/barber/BarberCardModal'
 import { AnimatedScreen } from '@/components/ui/AnimatedScreen'
+import { getHairstyleImage } from '@/constants/hairstyleImages'
+
+// Face shape tips for beard/combo styles
+const FACE_SHAPE_TIPS: Record<string, Record<string, string>> = {
+    'short-stubble-edge-up': { round: 'Stubble adds definition to softer jawlines', square: 'Enhances your naturally strong jawline' },
+    'medium-beard-fade': { round: 'The faded cheeks slim your face shape', oval: 'Works perfectly with your balanced proportions' },
+    'goatee-clean-shave': { round: 'Goatees elongate round faces — great choice for your shape', oblong: 'Adds width at the chin for balance' },
+    'full-beard-trim-shape': { oval: 'Your face shape can pull off any beard length', square: 'Softens angular features nicely' },
+    'skin-fade-full-beard': { square: 'The contrast highlights your strong bone structure', oblong: 'The beard adds width — prevents looking too narrow' },
+    'textured-top-stubble': { round: 'Textured top adds height while stubble defines the jaw', oval: 'A universally flattering combo for your face shape' },
+    'bald-fade-beard': { oval: 'The shaved head + beard creates a striking, balanced look', diamond: 'Beard widens the lower face for perfect symmetry' },
+}
 
 export default function HairstyleDetailScreen() {
     const { slug } = useLocalSearchParams<{ slug: string }>()
     const hairstyle = barberService.getHairstyleBySlug(slug)
     const isPremium = useSubscriptionStore((s) => s.isPremium)
     const userId = useUserStore((s) => s.session?.user?.id)
+    const profile = useUserStore((s) => s.profile)
 
     const { data: savedIds = [] } = useSavedHairstyleIds()
     const saveHairstyle = useSaveHairstyle()
@@ -60,7 +74,10 @@ export default function HairstyleDetailScreen() {
     }
 
     function toggleSave() {
-        if (!userId) { router.push('/sign-in'); return }
+        if (!userId) {
+            Alert.alert('Sign In Required', 'Creating an account allows you to save your favorite styles and routines!')
+            return
+        }
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         if (isSaved) {
             unsaveHairstyle.mutate(hairstyle!.id)
@@ -121,21 +138,36 @@ export default function HairstyleDetailScreen() {
                     </View>
 
                     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                        {/* Photo area — placeholder grid for front/side/back */}
+                        {/* Photo area */}
                         <Animated.View entering={FadeInDown.duration(350)} style={styles.photoArea}>
-                            <LinearGradient
-                                colors={['rgba(201,168,76,0.08)', 'transparent']}
-                                style={styles.photoGradient}
-                            >
-                                <View style={styles.photoGrid}>
-                                    {['Front', 'Side', 'Back'].map((label) => (
-                                        <View key={label} style={styles.photoFrame}>
-                                            <Ionicons name="cut" size={24} color={Colors.gold.primary} />
-                                            <Text style={styles.photoLabel}>{label}</Text>
+                            {(() => {
+                                const localImg = getHairstyleImage(hairstyle.slug)
+                                return (
+                                    <LinearGradient
+                                        colors={['rgba(201,168,76,0.08)', 'transparent']}
+                                        style={styles.photoGradient}
+                                    >
+                                        <View style={styles.photoGrid}>
+                                            {[
+                                                { label: 'Front', img: localImg?.front },
+                                                { label: 'Side', img: localImg?.side },
+                                                { label: 'Back', img: localImg?.back },
+                                            ].map(({ label, img }) => (
+                                                <View key={label} style={[styles.photoFrame, { overflow: 'hidden' }]}>
+                                                    {img ? (
+                                                        <Image source={img} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                                    ) : (
+                                                        <>
+                                                            <Ionicons name="cut" size={24} color={Colors.gold.primary} />
+                                                            <Text style={styles.photoLabel}>{label}</Text>
+                                                        </>
+                                                    )}
+                                                </View>
+                                            ))}
                                         </View>
-                                    ))}
-                                </View>
-                            </LinearGradient>
+                                    </LinearGradient>
+                                )
+                            })()}
                         </Animated.View>
 
                         {/* Style title + tags */}
@@ -162,6 +194,34 @@ export default function HairstyleDetailScreen() {
                             {hairstyle.description && (
                                 <Text style={styles.description}>{hairstyle.description}</Text>
                             )}
+
+                            {/* Quick Action Row — Share */}
+                            <View style={styles.quickActionRow}>
+                                {/* AR Try-On — HIDDEN for v1 launch. DeepAR requires license + effect
+                                 * files ($10-50 each) + native build. Uncomment when ready.
+                                 * <Pressable
+                                 *     style={styles.quickActionBtn}
+                                 *     onPress={() => {
+                                 *         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                                 *         if (isPremium) {
+                                 *             router.push('/ar-tryon' as any)
+                                 *         } else {
+                                 *             router.push('/paywall')
+                                 *         }
+                                 *     }}
+                                 * >
+                                 *     <Ionicons name="camera" size={16} color={Colors.gold.primary} />
+                                 *     <Text style={styles.quickActionText}>Try it On</Text>
+                                 *     {!isPremium && (
+                                 *         <Ionicons name="lock-closed" size={10} color={Colors.gold.primary} />
+                                 *     )}
+                                 * </Pressable>
+                                 */}
+                                <Pressable style={styles.quickActionBtn} onPress={shareGeneric}>
+                                    <Ionicons name="share-social" size={16} color={Colors.text.secondary} />
+                                    <Text style={[styles.quickActionText, { color: Colors.text.secondary }]}>Share</Text>
+                                </Pressable>
+                            </View>
                         </Animated.View>
 
                         <View style={styles.divider} />
@@ -231,6 +291,22 @@ export default function HairstyleDetailScreen() {
                             </Animated.View>
                         )}
 
+                        {/* Face Shape Tip (for beard/combo styles) */}
+                        {(() => {
+                            const faceShape = profile?.face_shape
+                            const tips = FACE_SHAPE_TIPS[hairstyle.slug]
+                            const tip = faceShape && tips ? tips[faceShape] : null
+                            if (!tip) return null
+                            return (
+                                <Animated.View entering={FadeInDown.delay(210).duration(350)} style={styles.section}>
+                                    <View style={styles.tipBox}>
+                                        <Ionicons name="sparkles" size={18} color={Colors.gold.primary} />
+                                        <Text style={styles.tipText}>{tip}</Text>
+                                    </View>
+                                </Animated.View>
+                            )
+                        })()}
+
                         <View style={styles.divider} />
 
                         {/* CTAs */}
@@ -255,24 +331,26 @@ export default function HairstyleDetailScreen() {
                             </Pressable>
 
                             <View style={styles.secondaryCtaRow}>
-                                {/* AR Try-On (Premium) */}
-                                <Pressable
-                                    style={styles.secondaryCta}
-                                    onPress={() => {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                                        if (isPremium) {
-                                            router.push('/ar-tryon')
-                                        } else {
-                                            router.push('/paywall')
-                                        }
-                                    }}
-                                >
-                                    <Ionicons name="camera" size={18} color={Colors.text.secondary} />
-                                    <Text style={styles.secondaryCtaText}>Try it On</Text>
-                                    {!isPremium && (
-                                        <Ionicons name="lock-closed" size={12} color={Colors.gold.primary} />
-                                    )}
-                                </Pressable>
+                                {/* AR Try-On — v2 feature. Routes to Coming Soon placeholder.
+                                 * Uncomment when DeepAR is integrated.
+                                 * <Pressable
+                                 *     style={styles.secondaryCta}
+                                 *     onPress={() => {
+                                 *         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                                 *         if (isPremium) {
+                                 *             router.push('/ar-tryon' as any)
+                                 *         } else {
+                                 *             router.push('/paywall')
+                                 *         }
+                                 *     }}
+                                 * >
+                                 *     <Ionicons name="camera" size={18} color={Colors.text.secondary} />
+                                 *     <Text style={styles.secondaryCtaText}>Try it On</Text>
+                                 *     {!isPremium && (
+                                 *         <Ionicons name="lock-closed" size={12} color={Colors.gold.primary} />
+                                 *     )}
+                                 * </Pressable>
+                                 */}
 
                                 {/* Generic share */}
                                 <Pressable style={styles.secondaryCta} onPress={shareGeneric}>
@@ -308,6 +386,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.lg,
         paddingVertical: Spacing.sm,
+        zIndex: 10,
+        elevation: 10,
     },
     backBtn: {
         width: 40, height: 40,
@@ -366,6 +446,24 @@ const styles = StyleSheet.create({
     tagGold: { borderColor: Colors.gold.muted },
     tagText: { ...Typography.caption, color: Colors.text.secondary, textTransform: 'capitalize' },
     description: { ...Typography.body, color: Colors.text.secondary, lineHeight: 22 },
+
+    quickActionRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+    },
+    quickActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: Spacing.md,
+        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.bg.secondary,
+        borderWidth: 1,
+        borderColor: Colors.bg.tertiary,
+    },
+    quickActionText: { ...Typography.small, color: Colors.gold.primary, fontWeight: '600' },
 
     divider: { height: 1, backgroundColor: Colors.bg.tertiary, marginVertical: Spacing.md, marginHorizontal: Spacing.lg },
 
@@ -460,4 +558,35 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.bg.secondary,
     },
     secondaryCtaText: { ...Typography.bodyMedium, color: Colors.text.secondary },
+
+    // Hero image (for styles with local images)
+    heroImageWrapper: {
+        width: '100%',
+        height: 280,
+        borderRadius: BorderRadius.lg,
+        overflow: 'hidden',
+        backgroundColor: Colors.bg.secondary,
+    },
+    heroImage: {
+        width: '100%',
+        height: '100%',
+    },
+
+    // Face shape tip box
+    tipBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        backgroundColor: Colors.overlay.gold,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.md,
+        borderWidth: 1,
+        borderColor: Colors.gold.muted,
+    },
+    tipText: {
+        ...Typography.body,
+        color: Colors.gold.primary,
+        flex: 1,
+        fontWeight: '600',
+    },
 })
