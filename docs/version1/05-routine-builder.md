@@ -12,7 +12,7 @@ The routine builder is the **core daily driver** of the app. Users open it every
 | Routines | 2 (morning + night, fixed) | Unlimited + custom |
 | Steps per routine | 3 max | Unlimited |
 | AI-generated routine | ✗ | ✓ |
-| Product recommendations | Generic | Personalized with affiliate links |
+| Product recommendations | On Home tab ("Products For You") | Personalized on Home tab |
 | Step notes & tips | ✗ | ✓ |
 | Routine timer | ✗ | ✓ |
 
@@ -79,15 +79,16 @@ export function RoutineCard({ routine, onPress }: RoutineCardProps) {
 
 ## Routine Detail Screen (`app/routine-editor.tsx`)
 
+> **Note:** Inline affiliate product cards were **removed** from the routine editor to keep the step-completion experience clean and distraction-free. Affiliate recommendations are available on the Home tab ("Products For You" section) instead.
+
 ```
 Header: "Morning Routine" + Edit button (Premium)
 
-Steps list — each step is a swipeable card:
+Steps list — each step is a checkable card:
 
 ┌─────────────────────────────────────┐
 │  ○  Cleanser                        │  ← tap circle to complete
 │     Wash face with lukewarm water   │
-│     💡 CeraVe Foaming Cleanser →   │  ← affiliate link (Premium)
 │     ⏱ 60 seconds                   │
 └─────────────────────────────────────┘
 

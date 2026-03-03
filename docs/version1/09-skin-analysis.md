@@ -13,9 +13,10 @@ This protects against liability and sets correct user expectations.
 
 ## Technical Approach
 
-Two-layer analysis:
-1. **Google ML Kit (on-device)** — Face detection, landmark detection, basic analysis. Fast, free, private.
-2. **GPT-4o Vision (server-side via Supabase Edge Function)** — Deep analysis of skin texture, tone, concerns. Premium quality but costs ~$0.01–0.03 per analysis.
+Single-layer server-side analysis:
+- **GPT-4o Vision (server-side via Supabase Edge Function `analyze-skin`)** — Deep analysis of skin texture, tone, concerns. Premium quality, costs ~$0.01–0.03 per analysis.
+- Camera capture at **quality 0.85** with base64 encoding, sent directly to the Edge Function.
+- No on-device ML (Google ML Kit is NOT used).
 
 ---
 
@@ -74,7 +75,7 @@ export default function SkinAnalysisScreen() {
 
   async function takePhoto() {
     const shot = await cameraRef.current?.takePictureAsync({
-      quality: 0.8,
+      quality: 0.85,
       base64: true,
       exif: false  // Don't capture location metadata
     })

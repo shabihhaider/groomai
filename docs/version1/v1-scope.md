@@ -1,6 +1,6 @@
 # GroomAI — Version 1 Scope (Clean Product)
 
-> Accurate as of 2026-03-01.
+> Accurate as of 2026-03-03.
 
 This document defines what **is included in v1** vs what is **explicitly not v1**.
 
@@ -21,6 +21,8 @@ This document defines what **is included in v1** vs what is **explicitly not v1*
 
 ### v1 safety defaults
 - Affiliate links are **disabled by default** (`AFFILIATES_ENABLED = false`) so the app can launch safely without approved affiliate accounts.
+- Affiliate product cards have been **removed from the routine editor** — recommendations are shown only on the Home tab ("Products For You" section) to keep the routine step-completion experience clean.
+- App runs in **Expo Go** on physical devices. DeepAR (v2) is the only feature that requires an EAS dev build.
 
 ## v1 = Implemented, but currently blocked
 

@@ -6,38 +6,37 @@ This file covers everything that must be set up before implementation begins. Sk
 
 ---
 
-## 1. Project Initialization (Expo Development Build)
+## 1. Project Initialization
 
-> **Critical:** This app uses native SDKs (DeepAR, RevenueCat, react-native-purchases). It **cannot** run in Expo Go. You must scaffold it as a Development Build project from the start.
+> **v1 runs in Expo Go.** DeepAR (AR Try-On) is the only feature requiring a native dev build, and it's deferred to v2. All v1 features (camera, notifications, RevenueCat, etc.) work in Expo Go with SDK 54+.
 
 ```bash
 # Create the project
 npx create-expo-app groomai --template blank-typescript
 cd groomai
 
-# Add dev client — this is what enables native modules to work
-npx expo install expo-dev-client
-
 # Install all dependencies (from 01-project-overview.md package.json)
 npx expo install expo-router expo-camera expo-notifications expo-image-picker \
   expo-apple-authentication expo-media-library expo-linear-gradient expo-blur \
   expo-haptics expo-updates expo-sharing \
-  react-native-reanimated lottie-react-native react-native-deepar \
-  react-native-purchases react-native-svg react-native-bottom-sheet \
+  react-native-reanimated lottie-react-native \
+  react-native-purchases react-native-svg @gorhom/bottom-sheet \
   react-native-view-shot \
   @supabase/supabase-js @react-native-async-storage/async-storage \
-  @tanstack/react-query zustand date-fns posthog-react-native \
-  @sentry/react-native nativewind
+  @tanstack/react-query zustand date-fns \
+  @sentry/react-native @react-native-community/netinfo
 
-# Build the dev client locally (you need this before running anything)
-# iOS (requires a Mac + Xcode):
-npx expo run:ios
+# Start in Expo Go (v1 development)
+npx expo start
+
+# OR start with dev client (needed for v2 DeepAR):
+# npx expo start --dev-client
 
 # Android:
 npx expo run:android
 ```
 
-**You will NOT use `expo start` with Expo Go.** You will use `expo start --dev-client` after the dev client is installed.
+**For v1 development, use `npx expo start` (Expo Go).** When you add DeepAR for v2, switch to `npx expo start --dev-client`.
 
 ---
 
@@ -53,8 +52,6 @@ EXPO_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_...
-EXPO_PUBLIC_DEEPAR_IOS_KEY=...
-EXPO_PUBLIC_DEEPAR_ANDROID_KEY=...
 EXPO_PUBLIC_POSTHOG_KEY=phc_...
 EXPO_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...

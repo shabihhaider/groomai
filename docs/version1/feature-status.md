@@ -1,9 +1,10 @@
 # GroomAI — Feature Status
-> Accurate as of 2026-03-01.
+> Accurate as of 2026-03-03.
 >
 > Most of Phases 1–7 and 9 are implemented.
 > - **Phase 8 (AR Try-On)** is **deferred/hidden** for v1 (DeepAR not integrated).
 > - **AI features are built and deployed**, but **currently blocked** until the OpenAI account has billing/credits (OpenAI returns quota exceeded).
+> - **App runs successfully in Expo Go** on physical devices (iPhone tested). Dev build is NOT required for v1 features.
 >
 > **V1 Production Audit applied** — see `reports/v1-production-audit.md` for full details.
 
@@ -53,9 +54,12 @@ Deployed to project `nthiyvnjypvscgfeotyh`:
 ### Phase 2 — Auth & Onboarding
 - Welcome screen with sign-up / sign-in CTAs
 - Email sign-up + sign-in with Supabase Auth
+- Sign-up handles 3 scenarios: (1) email confirmation ON → "Check Your Email" alert, redirect to sign-in; (2) auto-confirm → "Account Created!" alert, navigate to `/`; (3) email already exists → "Account Exists" with sign-in option
+- Sign-in uses explicit `router.replace('/')` after successful auth (not relying solely on auth listener)
 - 6-step onboarding: basics, face shape, skin, hair, goals, trial start
 - Profile written to `profiles` table on completion
 - Auth state persisted — logged-in users skip to tabs
+- Sign-out properly clears: Zustand stores (`user.store.reset()`, `subscription.store.reset()`), React Query cache (`queryClient.clear()`), then redirects to `/(auth)/welcome`
 
 ### Phase 3 — Monetization
 - RevenueCat integration (`lib/revenuecat.ts`)
@@ -97,7 +101,7 @@ Deployed to project `nthiyvnjypvscgfeotyh`:
 
 ### Phase 7 — AI Features
 - **Skin Analysis** (`app/skin-analysis.tsx`):
-  - Front camera with gold oval face guide (SVG)
+  - Front camera with gold oval face guide (SVG), quality: 0.85
   - GPT-4o Vision via `analyze-skin` Edge Function
   - Results: skin type, score, concerns with severity, recommendations
   - Photos uploaded to `skin-analysis` Supabase Storage bucket
@@ -158,7 +162,7 @@ Deployed to project `nthiyvnjypvscgfeotyh`:
   - `services/affiliate.service.ts`: profile-based filtering, routine step keyword matching, click tracking
   - `hooks/useAffiliate.ts`: `useAffiliateRecommendations()` + `useProductScans()`
   - `AffiliateProductCard` component (compact + full modes)
-  - **Home tab**: "Products For You" section (3 personalised cards)
+  - **Home tab**: "Products For You" section (3 personalised cards) — this is now the primary affiliate placement (routine-editor affiliate cards were removed to keep the core routine UX clean)
   - Click tracking writes to `affiliate_clicks` table (fire-and-forget)
 - **Analytics (`lib/analytics.ts`)**:
   - PostHog events via REST API (no native SDK) — fire-and-forget, never throws
@@ -194,7 +198,7 @@ Deployed to project `nthiyvnjypvscgfeotyh`:
 | Product Scanner | ✅ Full screen | Linked from Home → Tools (premium-gated in-screen) |
 | Celebrity Breakdown | ✅ Full screen | Premium-gated in-screen (deep links cannot bypass) |
 | Hair Loss Tracker | ✅ Full screen | Linked from Home → Tools (premium-gated in-screen) |
-| Affiliate links in routine steps | ✅ Wired | Inline suggestions show in `routine-editor.tsx` (cards show “Soon” while affiliates disabled) |
+| Affiliate links in routine steps | ❌ Removed | Inline per-step `AffiliateProductCard` and bottom "Recommended Products" section removed from `routine-editor.tsx` to declutter the core routine experience. Affiliate recommendations remain on Home tab ("Products For You" section). |
 | Affiliate "My Kit" on Profile | ✅ Wired | Profile shows top recommendations (cards show “Soon” while affiliates disabled) |
 
 ### Phase 10 — Launch Prep (Not Started)
@@ -225,6 +229,21 @@ The following issues were identified and fixed during the V1 production readines
 | Streak freeze tooltip | `app/(tabs)/tracker.tsx` | P2 | Added freeze info explanation popup: "A freeze protects your streak if you miss a day." |
 | Actionable badge copy | `constants/badges.ts` | P2 | Updated feature badge descriptions from passive ("Completed your first...") to actionable ("Go to Skin Analysis and take your first selfie scan"). |
 | Try it On CTA placement | `app/hairstyle-detail.tsx` | P2 | Added quick action row (Try it On + Share) right after the title section — no longer buried at bottom. |
+
+---
+
+## V1 Device Testing Fixes Applied ✅ (2026-03-03)
+
+The following issues were identified during physical device testing (iPhone via Expo Go) and fixed:
+
+| Fix | File | Severity | Description |
+|---|---|---|---|
+| Sign-out redirect | `app/(tabs)/profile.tsx` | P0 CRITICAL | Sign-out now clears Zustand stores (`user.store.reset()`, `subscription.store.reset()`), React Query cache (`queryClient.clear()`), and redirects to `/(auth)/welcome`. Previously, user stayed on profile page with stale data. |
+| Sign-in navigation | `app/(auth)/sign-in.tsx` | P0 CRITICAL | Added explicit `router.replace('/')` after successful `signInWithPassword()`. Previously relied solely on `onAuthStateChange` listener + index.tsx Redirect, which doesn't fire from auth screens. |
+| Sign-up navigation | `app/(auth)/sign-up.tsx` | P0 CRITICAL | Added 3-scenario handling: email confirmation ON → "Check Your Email" alert, auto-confirm → "Account Created!" + navigate to `/`, email exists → "Account Exists" with sign-in option. Previously did nothing on success. |
+| Home greeting fallback | `app/(tabs)/home.tsx` | P1 | Changed `firstName` fallback from `'King'` to `'there'`. Previously showed "King." for users without a name (or after sign-out). |
+| Camera quality | `app/skin-analysis.tsx` | P1 | Bumped camera capture quality from `0.7` to `0.85` for better skin analysis input. |
+| Routine editor cleanup | `app/routine-editor.tsx` | P1 | Removed per-step `AffiliateProductCard` and bottom "Recommended Products" section. Removed `findProductForStep()` function and unused imports. Routine steps now show only the clean checklist experience. |
 
 ---
 

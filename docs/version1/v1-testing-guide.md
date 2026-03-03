@@ -121,8 +121,9 @@ npx expo start --go -c
 | Step | Action | Expected Result |
 |---|---|---|
 | 1 | Profile tab → **Sign Out** | Alert: "Are you sure?" |
-| 2 | Tap **Sign Out** in alert | Returns to Welcome screen |
+| 2 | Tap **Sign Out** in alert | Returns to Welcome screen. Zustand stores reset (`user.store`, `subscription.store`), React Query cache cleared (`queryClient.clear()`), navigates to `/(auth)/welcome`. |
 | 3 | Kill and reopen app | Stays on Welcome (session cleared) |
+| 4 | Tap back (Android) or swipe back | Should NOT return to profile — navigation stack is replaced |
 
 ---
 

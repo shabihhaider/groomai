@@ -25,14 +25,13 @@ A premium, AI-powered men's grooming companion that feels like having a personal
 ### Frontend
 | Tech | Purpose |
 |---|---|
-| React Native (0.76+) | Cross-platform iOS + Android |
-| Expo (Development Build) | Required for native modules (DeepAR). Uses `expo-dev-client` — NOT Expo Go. |
+| React Native (0.81+) | Cross-platform iOS + Android |
+| Expo (SDK 54+) | Runs in Expo Go for v1 (no native modules needed). DeepAR is v2 and will require a dev build. |
 | TypeScript | Type safety throughout |
-| NativeWind (Tailwind for RN) | Styling system |
-| Expo Router v4 | File-based navigation (Stack + Tabs) |
-| Reanimated 3 | Premium micro-animations |
+| StyleSheet.create | Styling system (standard React Native stylesheets) |
+| Expo Router v4 (expo-router ~6) | File-based navigation (Stack + Tabs) |
+| Reanimated 4 | Premium micro-animations |
 | Lottie React Native | Animated illustrations (onboarding, badges) |
-| DeepAR React Native SDK | AR Hairstyle + Beard try-on |
 | Expo Camera | Selfie capture (skin analysis, hair loss tracker, barcode scanning) |
 | Expo Notifications | Push notifications (habit reminders) |
 | AsyncStorage | Local caching |
@@ -47,8 +46,7 @@ A premium, AI-powered men's grooming companion that feels like having a personal
 | Supabase Auth | Email, Google, Apple Sign-In |
 | Supabase Storage | Profile photos, hair loss photos, skin selfies |
 | Supabase Edge Functions | Server-side logic (AI calls, affiliate tracking) |
-| Google ML Kit (on-device) | Face landmark detection, skin analysis |
-| OpenAI API (GPT-4o) | Routine generation, AI product recommendations |
+| OpenAI API (GPT-4o Vision) | Skin analysis, routine generation, product analysis, celebrity breakdown (all via Edge Functions — no on-device ML) |
 
 ### Monetization
 | Tech | Purpose |
@@ -61,6 +59,9 @@ A premium, AI-powered men's grooming companion that feels like having a personal
 | PostHog | Product analytics, funnel tracking, feature flags |
 | Sentry | Error monitoring |
 | expo-notifications | Push notifications — used directly via Expo. OneSignal is NOT used; all notification code uses the expo-notifications API. |
+
+> **Note (v1):** The app runs in **Expo Go** for v1 development. DeepAR AR Try-On is deferred to v2 and will require an EAS dev build.
+> NativeWind is NOT used — all styling uses standard `StyleSheet.create`.
 
 ---
 
@@ -86,10 +87,15 @@ groomai/
 │   │   ├── barber.tsx
 │   │   ├── tracker.tsx
 │   │   └── profile.tsx
-│   ├── ar-tryon.tsx
+│   ├── ar-tryon.tsx              # v2 only; hidden placeholder in v1
+│   ├── ai-routine.tsx            # AI Routine Generator
 │   ├── skin-analysis.tsx
 │   ├── product-scanner.tsx
 │   ├── hair-loss-tracker.tsx
+│   ├── celebrity-breakdown.tsx   # Celebrity hairstyle breakdown
+│   ├── badge-unlock.tsx          # Badge celebration screen
+│   ├── hairstyle-detail.tsx      # Single hairstyle view
+│   ├── routine-editor.tsx        # Routine step checklist
 │   ├── paywall.tsx
 │   └── _layout.tsx
 ├── components/
@@ -108,8 +114,9 @@ groomai/
 ├── lib/
 │   ├── supabase.ts               # Supabase client
 │   ├── revenuecat.ts             # RevenueCat setup
-│   ├── deepar.ts                 # DeepAR setup
-│   └── openai.ts                 # OpenAI client
+│   ├── analytics.ts              # PostHog + Sentry wrapper
+│   ├── edgeFunctions.ts          # Standardized Edge Function caller
+│   └── queryClient.ts            # React Query client config
 ├── services/
 │   ├── auth.service.ts
 │   ├── routine.service.ts
@@ -117,34 +124,40 @@ groomai/
 │   ├── barber.service.ts
 │   ├── skin.service.ts
 │   ├── hairloss.service.ts
+│   ├── product.service.ts        # Barcode + ingredient analysis
+│   ├── affiliate.service.ts      # Profile-based product filtering
 │   └── subscription.service.ts
 ├── stores/
-│   ├── user.store.ts             # Zustand — user profile
-│   ├── routine.store.ts
-│   ├── habit.store.ts
-│   └── subscription.store.ts
+│   ├── user.store.ts             # Zustand — session, profile, onboarding
+│   └── subscription.store.ts     # Zustand — isPremium, reset()
 ├── hooks/
 │   ├── useSubscription.ts
 │   ├── useHabits.ts
 │   ├── useRoutine.ts
-│   └── useFaceAnalysis.ts
+│   ├── useAffiliate.ts           # Affiliate recommendations + product scans
+│   ├── useAI.ts                  # AI feature hooks
+│   ├── useBarber.ts
+│   └── useNetworkState.ts
 ├── constants/
 │   ├── colors.ts
 │   ├── typography.ts
+│   ├── spacing.ts
 │   ├── hairstyles.ts             # Full hairstyle library data
-│   ├── ingredients.ts            # Ingredient safety data
+│   ├── hairstyleImages.ts        # Hairstyle image mappings
+│   ├── affiliateProducts.ts      # 20 affiliate products across 11 categories
+│   ├── defaultRoutines.ts        # Seed routines by skin type
+│   ├── dailyTips.ts              # Rotating daily tips
 │   └── badges.ts                 # Badge definitions
 ├── types/
 │   └── supabase.ts               # Auto-generated — run: supabase gen types typescript --project-id YOUR_ID > types/supabase.ts
 ├── utils/
 │   ├── faceShape.ts              # Face shape detection logic
-│   ├── skinType.ts               # Skin type scoring logic
 │   ├── streaks.ts                # Streak calculation
-│   └── notifications.ts
+│   └── notifications.ts         # Push notification scheduling
 ├── assets/
 │   ├── animations/               # Lottie JSON files
 │   ├── images/
-│   └── deepar-effects/           # AR effect files
+│   └── deepar-effects/           # AR effect files (v2 — empty for now)
 ├── supabase/
 │   ├── migrations/               # DB migrations
 │   └── functions/                # Edge functions
@@ -160,45 +173,39 @@ groomai/
 ```json
 {
   "dependencies": {
-    "expo": "~53.0.0",
-    "expo-router": "~4.0.0",
-    "expo-dev-client": "~5.0.0",
-    "react-native": "0.76.x",
+    "expo": "^54",
+    "expo-router": "~6.0.23",
+    "expo-dev-client": "~6.0.20",
+    "react-native": "0.81.5",
     "typescript": "^5.3.0",
-    "nativewind": "^4.1.0",
-    "react-native-reanimated": "~3.16.0",
-    "lottie-react-native": "7.1.0",
-    "@supabase/supabase-js": "^2.46.0",
+    "react-native-reanimated": "~4.1.1",
+    "lottie-react-native": "~7.3.1",
+    "@supabase/supabase-js": "^2.49.0",
     "zustand": "^5.0.0",
     "@tanstack/react-query": "^5.62.0",
-    "react-native-purchases": "^8.2.0",
-    "@react-navigation/native": "^7.0.0",
-    "@react-navigation/bottom-tabs": "^7.0.0",
-    "@react-navigation/stack": "^7.0.0",
-    "react-native-deepar": "^1.5.0",
-    "expo-camera": "~16.0.0",
-    "expo-notifications": "~0.29.0",
-    "expo-image-picker": "~16.0.0",
-    "expo-apple-authentication": "~7.1.0",
-    "expo-media-library": "~17.0.0",
-    "expo-linear-gradient": "~14.0.0",
-    "expo-blur": "~14.0.0",
-    "@react-native-async-storage/async-storage": "2.1.0",
-    "react-native-bottom-sheet": "^5.0.0",
-    "react-native-svg": "15.8.0",
+    "react-native-purchases": "^9.10.3",
+    "@gorhom/bottom-sheet": "^5.1.0",
+    "expo-camera": "~17.0.10",
+    "expo-notifications": "~0.32.16",
+    "expo-image-picker": "~17.0.10",
+    "expo-apple-authentication": "~8.0.8",
+    "expo-media-library": "~18.2.1",
+    "expo-linear-gradient": "~15.0.8",
+    "expo-blur": "~15.0.8",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "react-native-svg": "15.12.1",
     "date-fns": "^4.1.0",
-    "posthog-react-native": "^3.3.0",
-    "@sentry/react-native": "^6.5.0",
-    "@react-native-community/netinfo": "^11.4.0",
-    "expo-haptics": "~14.0.0",
-    "expo-updates": "~0.26.0",
-    "expo-sharing": "~12.0.0",
-    "react-native-view-shot": "^3.8.0"
+    "@sentry/react-native": "~7.2.0",
+    "@react-native-community/netinfo": "11.4.1",
+    "expo-haptics": "~15.0.8",
+    "expo-updates": "~29.0.16",
+    "expo-sharing": "~14.0.8",
+    "react-native-view-shot": "4.0.3"
   }
 }
 ```
 
-> **Note:** `expo-barcode-scanner` is removed — barcode scanning is handled by `expo-camera`'s built-in `onBarcodeScanned` prop (SDK 51+). `react-native-camera` is removed — it is deprecated and conflicts with `expo-camera`.
+> **Note:** `expo-barcode-scanner` is removed — barcode scanning is handled by `expo-camera`'s built-in `onBarcodeScanned` prop (SDK 51+). `react-native-camera` is removed — it is deprecated and conflicts with `expo-camera`. `nativewind` is NOT used — all styling uses standard `StyleSheet.create`. `react-native-deepar` is NOT installed (v2 only). `posthog-react-native` is NOT installed — PostHog events are sent via REST API.
 ```
 
 ---
@@ -213,9 +220,10 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=your_rc_ios_key
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=your_rc_android_key
 EXPO_PUBLIC_POSTHOG_KEY=your_posthog_key
-EXPO_PUBLIC_DEEPAR_IOS_KEY=your_deepar_ios_key
-EXPO_PUBLIC_DEEPAR_ANDROID_KEY=your_deepar_android_key
+EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
 ```
+
+> **Note:** DeepAR keys (`EXPO_PUBLIC_DEEPAR_IOS_KEY`, `EXPO_PUBLIC_DEEPAR_ANDROID_KEY`) are not needed for v1 — AR Try-On is deferred to v2.
 
 ### Server-only secrets — NEVER in .env, NEVER in the mobile bundle
 

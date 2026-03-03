@@ -37,11 +37,12 @@ Start with **Amazon Associates** — it covers everything and is easy to get app
 ## How Affiliate Links Work in the App
 
 1. User has `oily` skin + `acne_prone` concern
-2. Routine step says: "Salicylic Acid Cleanser"
-3. Below step: "💡 We recommend: CeraVe SA Cleanser →"
-4. Link opens Amazon with your affiliate tag appended
-5. User buys (doesn't even have to be the same product) → you earn commission
-6. App tracks the click in `affiliate_clicks` table
+2. Home tab "Products For You" section shows personalized recommendations
+3. User taps a product card → link opens Amazon with your affiliate tag appended
+4. User buys (doesn't even have to be the same product) → you earn commission
+5. App tracks the click in `affiliate_clicks` table
+
+> **Note (v1 change):** Inline affiliate product cards were **removed from the routine editor** (`routine-editor.tsx`) to keep the step-completion experience clean and distraction-free. The Home tab "Products For You" section is now the primary affiliate placement. The `AffiliateProductCard` component still exists and is used on the Home tab.
 
 **Critical:** Amazon's cookie is 24 hours. Any purchase within 24 hours of clicking your link earns you commission.
 

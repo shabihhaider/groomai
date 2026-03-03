@@ -218,7 +218,7 @@ When all 3 steps are checked, nothing happens. There should be a confetti animat
 | 5 | Paywall missing hero section/animation | Paywall |
 | 6 | Badge grid — switch to 2 columns, show progress on locked badges | Progress |
 | 7 | Routine completion — add confetti + XP toast on finish | Routines |
-| 8 | Affiliate product cards missing under routine steps | Routines |
+| 8 | ~~Affiliate product cards missing under routine steps~~ | Routines | **Decision: Intentionally removed.** Affiliate cards in routine steps cluttered the core checklist UX. Affiliate recommendations are shown on the Home tab ("Products For You" section) instead. |
 
 ### 🟡 P2 — Should Have (Before Marketing/Launch)
 | # | Issue | Screen |

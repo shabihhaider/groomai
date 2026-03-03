@@ -37,19 +37,32 @@ App Launch
     └── profile.tsx            → Settings, subscription, skin/hair log
         │
         └── Modals / Full Screens (pushed from tabs):
-        ├── ar-tryon.tsx           [PREMIUM] (v2 only; hidden in v1)
+            ├── ar-tryon.tsx           [v2 only; hidden placeholder in v1]
             ├── skin-analysis.tsx      [PREMIUM]
             ├── product-scanner.tsx    [PREMIUM]
             ├── hair-loss-tracker.tsx  [PREMIUM]
+            ├── ai-routine.tsx         [AI Routine Generator]
+            ├── celebrity-breakdown.tsx [Celebrity hairstyle breakdown]
             ├── paywall.tsx            → Shown when free user hits premium feature
             ├── badge-unlock.tsx       → Full-screen celebration when badge earned
             ├── hairstyle-detail.tsx   → Single hairstyle view + barber card
-            └── routine-editor.tsx     → Add/edit routine steps
+            └── routine-editor.tsx     → Routine step checklist (clean — no affiliate cards)
 ```
 
 ---
 
 ## Navigation Setup
+
+### Auth Flow (Important Implementation Detail)
+
+The auth flow uses **explicit navigation** after successful auth, not just passive `onAuthStateChange` listeners.
+
+- **Sign-in**: After `signInWithPassword()` succeeds and returns a session, `sign-in.tsx` calls `router.replace('/')` explicitly. This is necessary because the `<Redirect>` in `index.tsx` only fires when the user is on that screen — it won't redirect if the user is on an auth screen.
+- **Sign-up**: After `signUp()` succeeds, `sign-up.tsx` handles 3 scenarios:
+  1. Email confirmation ON (no session returned): Shows "Check Your Email" alert, redirects to sign-in
+  2. Auto-confirm ON (session returned): Shows "Account Created!" alert, navigates to `/`
+  3. Email already exists: Shows "Account Exists" with option to go to sign-in
+- **Sign-out**: `profile.tsx` calls `supabase.auth.signOut()`, then `useUserStore.reset()`, `useSubscriptionStore.reset()`, `queryClient.clear()`, and `router.replace('/(auth)/welcome')`
 
 ### `app/_layout.tsx` — Root Layout
 ```tsx

@@ -32,9 +32,9 @@ Every screen built in Phases 1–4 gets polished to App Store "Apps We Love" qua
 ## Step-by-Step Tasks
 
 ### 5.1 — Color & Typography Constants
-- [ ] Create `constants/colors.ts` — all tokens from `14-ui-design-system.md`
-- [ ] Create `constants/typography.ts` — font sizes, weights, line heights
-- [ ] Configure NativeWind with custom theme values to match these tokens
+- [x] Create `constants/colors.ts` — all tokens from `14-ui-design-system.md`
+- [x] Create `constants/typography.ts` — font sizes, weights, line heights
+- [x] All styling uses `StyleSheet.create` (NativeWind is not used)
 
 ### 5.2 — Core UI Components (Design System)
 Build each component to the spec in `14-ui-design-system.md`:

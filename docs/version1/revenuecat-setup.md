@@ -68,5 +68,4 @@
 - Try purchasing → will go through sandbox flow (no real charge)
 - Check RevenueCat dashboard → should show the test transaction
 
-> **Note**: RevenueCat prices will NOT work in Expo Go or web builds.
-> You must test on a real iOS/Android device with a development build.
+> **Note**: RevenueCat initialization works in Expo Go (the SDK loads without crashing), but actual purchasing/price fetching requires a real iOS/Android device with a signed build (TestFlight or EAS dev build). During v1 development in Expo Go, purchases will fail gracefully and the paywall will show placeholder prices.

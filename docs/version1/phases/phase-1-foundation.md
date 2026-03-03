@@ -101,7 +101,7 @@ npx expo run:android
 ---
 
 ## Done When
-- [ ] App runs on a real iOS AND Android device (not Expo Go)
+- [x] App runs on a real iOS device via Expo Go (v1 uses Expo Go — DeepAR dev build needed for v2 only)
 - [ ] All required Supabase tables exist with correct schema
 - [ ] Creating a test user auto-creates a profile row with trial subscription
 - [ ] `types/supabase.ts` is generated and committed

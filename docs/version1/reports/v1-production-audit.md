@@ -229,9 +229,9 @@ if (isNightRoutine && isBeforeEvening && completed === 0) {
 
 ### 3.2 — Routine Editor: Affiliate Product Placement
 
-**Severity**: P3
+**Severity**: ~~P3~~ Resolved
 **File**: `app/routine-editor.tsx`
-**Impact**: The routine editor calls `findProductForStep()` and shows a product card after step completion. This is implemented but the affiliate URLs are broken (see 1.1). Once URLs are fixed, add UTM parameters for tracking.
+**Impact**: ~~The routine editor calls `findProductForStep()` and shows a product card after step completion.~~ **UPDATE (2026-03-03):** Inline affiliate product cards and the bottom "Recommended Products" section have been intentionally **removed** from the routine editor. The `findProductForStep()` function and all affiliate-related imports were deleted. This decision was made during device testing — the product cards cluttered the core step-completion experience. Affiliate recommendations are now shown only on the Home tab ("Products For You" section).
 
 ---
 

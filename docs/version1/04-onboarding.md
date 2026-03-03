@@ -79,7 +79,7 @@ Progress: ●●○○○○
 "Let's find your face shape."
 
 Option A — Selfie Scan (Premium):
-  [Take Selfie] → Google ML Kit face landmark analysis
+  [Take Selfie] → Face shape quiz (on-device ML not implemented; quiz fallback is used)
   Shows detected face shape with illustration
   
 Option B — Quiz (Free):

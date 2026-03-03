@@ -52,7 +52,7 @@ Users can sign up, log in (Email, Google, Apple), and complete the 6-step onboar
 - [ ] `app/(onboarding)/step-2-face.tsx` — Face shape quiz OR selfie scan → saves `face_shape`
   - [ ] Implement `utils/faceShape.ts` — `detectFaceShape(landmarks)` logic (see `04-onboarding.md`)
   - [ ] Quiz path: 3 questions → derive face shape
-  - [ ] Selfie path: Google ML Kit face landmark detection (can stub this for now with quiz fallback)
+  - [ ] Selfie path: Face shape detection (currently uses quiz fallback — ML Kit not integrated)
 - [ ] `app/(onboarding)/step-3-skin.tsx` — skin type + concerns → saves `skin_type`
 - [ ] `app/(onboarding)/step-4-hair.tsx` — hair type, thickness, beard → saves `hair_type`, `hair_thickness`, `has_beard`
 - [ ] `app/(onboarding)/step-5-goals.tsx` — goals, time, budget → saves `grooming_goals`, `daily_time_available`, `budget_range`

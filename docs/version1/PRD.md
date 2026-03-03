@@ -721,7 +721,7 @@ Users receive **7 days of full premium access** automatically after onboarding. 
 3. **No offline AI** — All AI features require network connectivity
 4. **Affiliates disabled by default** — No live commission links until partnership agreements are in place
 5. **Single language (English)** — Localization deferred to future release
-6. **Expo Development Build required** — Cannot use Expo Go due to native module dependencies (RevenueCat, etc.)
+6. **Expo Go compatible for v1** — All v1 features (camera, notifications, RevenueCat, etc.) run in Expo Go with SDK 54+. DeepAR (v2) is the only feature that will require an EAS dev build.
 
 ---
 
